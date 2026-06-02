@@ -72,29 +72,31 @@
             const container = document.getElementById('ingredientList');
             container.innerHTML = '<h3 class="font-bold text-orange-900 mb-2">計算結果 (' + targetCount + '個分)</h3>';
 
-            // 生地用(base)の計算
-            recipe.ingredients.base.forEach(ing => {
-                const amount = (ing.amount / recipe.baseCount) * targetCount;
-                appendRow(container, ing.name, amount.toFixed(1));
-            });
-
-            // 具材用(filling)の計算
-            if (recipe.ingredients.filling && recipe.ingredients.filling.length > 0) {
-                container.innerHTML += '<h3 class="font-bold text-orange-900 mt-4 mb-2">具材</h3>';
-                recipe.ingredients.filling.forEach(ing => {
-                    appendRow(container, ing.name, ing.amount.toFixed(1)); // 具材は固定値
+            // 1. 生地用(base)の計算
+            if (recipe.ingredients && recipe.ingredients.base) {
+                recipe.ingredients.base.forEach(ing => {
+                    const amount = (ing.amount / recipe.baseCount) * targetCount;
+                    appendRow(container, ing.name, amount.toFixed(1));
                 });
             }
 
-            // 【追加】茹でる用(boiling)の計算（ベーグル用）
-            if (recipe.ingredients.boiling && recipe.ingredients.boiling.length > 0) {
+            // 2. 具材用(filling)の計算
+            if (recipe.ingredients && recipe.ingredients.filling && recipe.ingredients.filling.length > 0) {
+                container.innerHTML += '<h3 class="font-bold text-orange-900 mt-4 mb-2">具材</h3>';
+                recipe.ingredients.filling.forEach(ing => {
+                    // 具材は計算せず固定で出す（必要なら計算式を入れてね）
+                    appendRow(container, ing.name, ing.amount.toFixed(1));
+                });
+            }
+
+            // 3. 茹でる用(boiling)の計算
+            if (recipe.ingredients && recipe.ingredients.boiling && recipe.ingredients.boiling.length > 0) {
                 container.innerHTML += '<h3 class="font-bold text-orange-900 mt-4 mb-2">茹でる用 (固定)</h3>';
                 recipe.ingredients.boiling.forEach(ing => {
                     appendRow(container, ing.name, ing.amount.toFixed(1));
                 });
             }
         }
-
         function appendRow(container, name, amount) {
             const div = document.createElement('div');
             div.className = "flex justify-between py-2 border-b border-orange-100 text-sm";
