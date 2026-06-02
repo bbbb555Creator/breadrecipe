@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文吾のパン工房</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-orange-50 min-h-screen p-4">
+    <div class="max-w-md mx-auto bg-white rounded-3xl shadow-lg p-6">
+        <h1 class="text-2xl font-bold text-orange-800 mb-6 text-center">🍞 文吾のパン工房</h1>
+
+        <div class="mb-6">
+            <label class="block text-sm font-bold text-orange-900 mb-2">レシピを選ぶ</label>
+            <select id="recipeSelect" onchange="loadRecipe()" class="w-full p-3 rounded-xl border border-orange-200 bg-orange-50 font-bold text-orange-900">
+                <option>読み込み中...</option>
+            </select>
+        </div>
+
+        <div class="bg-orange-100 p-4 rounded-22xl mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <span class="text-sm text-orange-900">ベース個数: <span id="baseCountDisplay" class="font-bold">0</span></span>
+            </div>
+            <label class="block text-sm font-bold text-orange-900 mb-2">作りたい個数</label>
+            <input type="number" id="targetCount" value="4" oninput="calculate()" class="w-full p-3 rounded-lg border border-orange-200 text-2xl font-bold text-center">
+        </div>
+
+        <div id="ingredientList" class="space-y-2"></div>
+    </div>
+
+    <script>
+        let allRecipes = {}; // ここにGASから取得したデータが入る
+
+        // GASのウェブアプリURL（ここに自分のURLを貼ってね！）
+        const GAS_URL = '【https://script.google.com/macros/s/AKfycbxPf6aGtE_j5qRRLuV6tjJ8aMOjaRQfBri3kOsDJ9dmteRgSuQ_7Kerizpi-X79eUaF/exec9】';
+
+        async function fetchRecipes() {
+            try {
+                const response = await fetch(GAS_URL);
+                const data = await response.json();
+                
+                const select = document.getElementById('recipeSelect');
+                select.innerHTML = '';
+                
+                data.forEach(item => {
+                    allRecipes[item.menu] = item;
+                    const option = document.createElement('option');
+                    option.value = item.menu;
+                    option.text = item.menu;
+                    select.appendChild(option);
+                });
+                loadRecipe();
+            } catch (e) {
+                console.error("データ取得失敗:", e);
+                document.getElementById('recipeSelect').innerHTML = '<option>データ取得エラー</option>';
+            }
+        }
+
+        function loadRecipe() {
+            const key = document.getElementById('recipeSelect').value;
+            const recipe = allRecipes[key];
+            if (!recipe) return;
+            document.getElementById('baseCountDisplay').innerText = recipe.baseCount;
+            calculate();
+        }
+
+        function calculate() {
+            const key = document.getElementById('recipeSelect').value;
+            const recipe = allRecipes[key];
+            const targetCount = parseFloat(document.getElementById('targetCount').value) || 0;
+            
+            const container = document.getElementById('ingredientList');
+            container.innerHTML = '<h3 class="font-bold text-orange-900 mb-2">計算結果 (' + targetCount + '個分)</h3>';
+
+            // 生地用(base)の計算
+            recipe.ingredients.base.forEach(ing => {
+                const amount = (ing.amount / recipe.baseCount) * targetCount;
+                appendRow(container, ing.name, amount.toFixed(1));
+            });
+
+            // 具材用(filling)の計算
+            if (recipe.ingredients.filling && recipe.ingredients.filling.length > 0) {
+                container.innerHTML += '<h3 class="font-bold text-orange-900 mt-4 mb-2">具材</h3>';
+                recipe.ingredients.filling.forEach(ing => {
+                    appendRow(container, ing.name, ing.amount.toFixed(1)); // 具材は固定値
+                });
+            }
+
+            // 【追加】茹でる用(boiling)の計算（ベーグル用）
+            if (recipe.ingredients.boiling && recipe.ingredients.boiling.length > 0) {
+                container.innerHTML += '<h3 class="font-bold text-orange-900 mt-4 mb-2">茹でる用 (固定)</h3>';
+                recipe.ingredients.boiling.forEach(ing => {
+                    appendRow(container, ing.name, ing.amount.toFixed(1));
+                });
+            }
+        }
+
+        function appendRow(container, name, amount) {
+            const div = document.createElement('div');
+            div.className = "flex justify-between py-2 border-b border-orange-100 text-sm";
+            div.innerHTML = `<span>${name}</span><span class="font-bold text-orange-900">${amount}g</span>`;
+            container.appendChild(div);
+        }
+
+        fetchRecipes();
+    </script>
+</body>
+</html>
