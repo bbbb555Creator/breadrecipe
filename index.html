@@ -35,20 +35,35 @@
         // ... (fetchRecipes, loadRecipe はそのまま)
 
         async function fetchRecipes() {
-            try {
-                const response = await fetch(GAS_URL);
-                const data = await response.json();
-                const select = document.getElementById('recipeSelect');
-                select.innerHTML = '';
-                data.forEach(item => {
-                    allRecipes[item.menu] = item;
-                    const option = document.createElement('option');
-                    option.value = item.menu; option.text = item.menu;
-                    select.appendChild(option);
-                });
-                loadRecipe();
-            } catch (e) { console.error(e); }
-        }
+    try {
+        const response = await fetch(GAS_URL);
+        const data = await response.json();
+        const select = document.getElementById('recipeSelect');
+        select.innerHTML = '';
+        
+        // 重複を避けるためのセット
+        const seenMenus = new Set();
+        
+        data.forEach(item => {
+            // ここで名前を完全にきれいにする（スペース削除・全角半角統一）
+            let cleanMenu = String(item.menu).replace(/[\s\u3000]+/g, "").trim();
+            
+            // すでに登録されていなければ追加
+            if (!seenMenus.has(cleanMenu)) {
+                allRecipes[cleanMenu] = item; // きれいな名前をキーにする
+                allRecipes[cleanMenu].menu = cleanMenu; // データ内の名前もきれいなものにする
+                
+                const option = document.createElement('option');
+                option.value = cleanMenu; 
+                option.text = cleanMenu;
+                select.appendChild(option);
+                
+                seenMenus.add(cleanMenu);
+            }
+        });
+        loadRecipe();
+    } catch (e) { console.error(e); }
+}
 
         function loadRecipe() {
             const key = document.getElementById('recipeSelect').value;
