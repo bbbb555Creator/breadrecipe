@@ -26,115 +26,121 @@
         </div>
 
         <div id="ingredientList" class="space-y-2"></div>
+
+        <h3 id="procedureTitle" class="font-bold text-orange-900 mt-8 mb-2 hidden">作り方</h3>
+        <div id="procedureList" class="text-sm text-orange-800 space-y-2"></div>
     </div>
 
     <script>
         let allRecipes = {};
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbxPf6aGtE_j5qRRLuV6tjJ8aMOjaRQfBri3kOsDJ9dmteRgSuQ_7Kerizpi-X79eUaF/exec';
 
-        // ... (fetchRecipes, loadRecipe はそのまま)
-
         async function fetchRecipes() {
-    try {
-        const response = await fetch(GAS_URL);
-        const data = await response.json();
-        const select = document.getElementById('recipeSelect');
-        select.innerHTML = '';
-        
-        // 重複を避けるためのセット
-        const seenMenus = new Set();
-        
-        data.forEach(item => {
-            // ここで名前を完全にきれいにする（スペース削除・全角半角統一）
-            let cleanMenu = String(item.menu).replace(/[\s\u3000]+/g, "").trim();
-            
-            // すでに登録されていなければ追加
-            if (!seenMenus.has(cleanMenu)) {
-                allRecipes[cleanMenu] = item; // きれいな名前をキーにする
-                allRecipes[cleanMenu].menu = cleanMenu; // データ内の名前もきれいなものにする
+            try {
+                const response = await fetch(GAS_URL);
+                const data = await response.json();
+                const select = document.getElementById('recipeSelect');
+                select.innerHTML = '';
                 
-                const option = document.createElement('option');
-                option.value = cleanMenu; 
-                option.text = cleanMenu;
-                select.appendChild(option);
+                const seenMenus = new Set();
                 
-                seenMenus.add(cleanMenu);
-            }
-        });
-        loadRecipe();
-    } catch (e) { console.error(e); }
-}
+                data.forEach(item => {
+                    let cleanMenu = String(item.menu).replace(/[\s\u3000]+/g, "").trim();
+                    if (!seenMenus.has(cleanMenu)) {
+                        allRecipes[cleanMenu] = item;
+                        allRecipes[cleanMenu].menu = cleanMenu;
+                        
+                        const option = document.createElement('option');
+                        option.value = cleanMenu; 
+                        option.text = cleanMenu;
+                        select.appendChild(option);
+                        seenMenus.add(cleanMenu);
+                    }
+                });
+                loadRecipe();
+            } catch (e) { console.error(e); }
+        }
 
         function loadRecipe() {
             const key = document.getElementById('recipeSelect').value;
             const recipe = allRecipes[key];
             if (!recipe) return;
             
-            // ここを追加！ベース個数を「作りたい個数」の初期値にするよ
             document.getElementById('targetCount').value = recipe.baseCount;
-            
             document.getElementById('baseCountDisplay').innerText = recipe.baseCount;
+            
+            // 作り方表示の更新処理
+            const procContainer = document.getElementById('procedureList');
+            const procTitle = document.getElementById('procedureTitle');
+            procContainer.innerHTML = '';
+            
+            if (recipe.procedures && recipe.procedures.length > 0) {
+                procTitle.classList.remove('hidden');
+                
+                recipe.procedures.forEach(sectionData => {
+                    // セクションタイトルを表示
+                    const h4 = document.createElement('h4');
+                    h4.className = "font-bold text-orange-950 mt-4 mb-1";
+                    h4.innerText = "【" + sectionData.section + "】";
+                    procContainer.appendChild(h4);
+                    
+                    // 手順を表示
+                    sectionData.steps.forEach(step => {
+                        const div = document.createElement('div');
+                        div.className = "text-sm text-orange-800 ml-2 mb-1";
+                        div.innerText = step;
+                        procContainer.appendChild(div);
+                    });
+                });
+            } else {
+                procTitle.classList.add('hidden');
+            }
+            
             calculate();
         }
 
         function calculate() {
-    const targetCount = document.getElementById('targetCount').value;
-    const recipe = allRecipes[document.getElementById('recipeSelect').value];
-    if (!recipe) return;
+            const targetCount = document.getElementById('targetCount').value;
+            const recipe = allRecipes[document.getElementById('recipeSelect').value];
+            if (!recipe) return;
 
-    const container = document.getElementById('ingredientList');
-    container.innerHTML = '';
+            const container = document.getElementById('ingredientList');
+            container.innerHTML = '';
 
-    // 材料かどうかを判定するフィルタ関数
-    function isIngredientLine(item) {
-        const text = item.name + item.amount;
-        // 手順っぽいキーワードや、あまりに長い行は弾く
-        const skipKeywords = ["捏ね", "オーブン", "鍋で", "ふんわり", "ラップ", "予熱", "完成"];
-        if (skipKeywords.some(key => text.includes(key))) return false;
-        if (text.length > 20) return false; // 長すぎる行は手順とみなす
-        return true;
-    }
+            function renderSection(title, ingredients) {
+                if (!ingredients || ingredients.length === 0) return;
+                
+                addCategoryTitle(container, title);
+                
+                ingredients.forEach(item => {
+                    const amountStr = item.amount.toString();
+                    const match = amountStr.match(/([\d\.]+)/);
+                    
+                    if (match && !amountStr.includes("適量") && !amountStr.includes("たっぷり")) {
+                        const baseValue = parseFloat(match[1]);
+                        const result = (baseValue * targetCount) / recipe.baseCount;
+                        let unit = amountStr.replace(match[1], "").trim();
+                        let displayAmount = result % 1 === 0 ? result.toFixed(0) : result.toFixed(1); 
 
-    function renderSection(title, ingredients) {
-        const filtered = ingredients.filter(isIngredientLine);
-        if (filtered.length === 0) return;
-        
-        addCategoryTitle(container, title);
-        
-        filtered.forEach(item => {
-            const amountStr = item.amount.toString();
-            const match = amountStr.match(/([\d\.]+)/);
-            
-            if (match && !amountStr.includes("適量") && !amountStr.includes("たっぷり")) {
-                const baseValue = parseFloat(match[1]);
-                const result = (baseValue * targetCount) / recipe.baseCount;
-                let unit = amountStr.replace(match[1], "").trim();
-                let displayAmount = result % 1 === 0 ? result.toFixed(0) : result.toFixed(1); 
-
-                if (unit.includes("大さじ") || unit.includes("小さじ")) {
-                    appendRow(container, item.name, unit + displayAmount, "");
-                } else {
-                    appendRow(container, item.name, displayAmount, unit);
-                }
-            } else {
-                appendRow(container, item.name, amountStr, "");
+                        if (unit.includes("大さじ") || unit.includes("小さじ")) {
+                            appendRow(container, item.name, unit + displayAmount, "");
+                        } else {
+                            appendRow(container, item.name, displayAmount, unit);
+                        }
+                    } else {
+                        appendRow(container, item.name, amountStr, "");
+                    }
+                });
             }
-        });
-    }
 
-    renderSection("生地用", recipe.ingredients.base);
-    // 具材がある場合のみ表示
-    if (recipe.ingredients.filling && recipe.ingredients.filling.length > 0) {
-        renderSection("具材", recipe.ingredients.filling);
-    }
-    renderSection("茹でる用", recipe.ingredients.boiling);
-}
+            renderSection("生地用", recipe.ingredients.base);
+            renderSection("具材", recipe.ingredients.filling);
+            renderSection("茹でる用", recipe.ingredients.boiling);
+        }
 
-        // 表示用関数を1つにまとめる
         function appendRow(container, name, amount, unit = "g") {
             const div = document.createElement('div');
             div.className = "flex justify-between py-2 border-b border-orange-100 text-sm";
-            // 単位がある場合だけ表示する（空なら何も付けない）
             const unitDisplay = unit ? unit : "";
             div.innerHTML = `<span>${name}</span><span class="font-bold text-orange-900">${amount}${unitDisplay}</span>`;
             container.appendChild(div);
