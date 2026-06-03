@@ -17,7 +17,7 @@
             </select>
         </div>
 
-        <div class="bg-orange-100 p-4 rounded-22xl mb-6">
+        <div class="bg-orange-100 p-4 rounded-2xl mb-6">
             <div class="flex justify-between items-center mb-4">
                 <span class="text-sm text-orange-900">ベース個数: <span id="baseCountDisplay" class="font-bold">0</span></span>
             </div>
@@ -29,79 +29,107 @@
     </div>
 
     <script>
-        let allRecipes = {}; // ここにGASから取得したデータが入る
-
-        // GASのウェブアプリURL（ここに自分のURLを貼ってね！）
+        let allRecipes = {};
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbxPf6aGtE_j5qRRLuV6tjJ8aMOjaRQfBri3kOsDJ9dmteRgSuQ_7Kerizpi-X79eUaF/exec';
+
+        // ... (fetchRecipes, loadRecipe はそのまま)
 
         async function fetchRecipes() {
             try {
                 const response = await fetch(GAS_URL);
                 const data = await response.json();
-                
                 const select = document.getElementById('recipeSelect');
                 select.innerHTML = '';
-                
                 data.forEach(item => {
                     allRecipes[item.menu] = item;
                     const option = document.createElement('option');
-                    option.value = item.menu;
-                    option.text = item.menu;
+                    option.value = item.menu; option.text = item.menu;
                     select.appendChild(option);
                 });
                 loadRecipe();
-            } catch (e) {
-                console.error("データ取得失敗:", e);
-                document.getElementById('recipeSelect').innerHTML = '<option>データ取得エラー</option>';
-            }
+            } catch (e) { console.error(e); }
         }
 
         function loadRecipe() {
             const key = document.getElementById('recipeSelect').value;
             const recipe = allRecipes[key];
             if (!recipe) return;
+            
+            // ここを追加！ベース個数を「作りたい個数」の初期値にするよ
+            document.getElementById('targetCount').value = recipe.baseCount;
+            
             document.getElementById('baseCountDisplay').innerText = recipe.baseCount;
             calculate();
         }
 
         function calculate() {
-            const key = document.getElementById('recipeSelect').value;
-            const recipe = allRecipes[key];
-            const targetCount = parseFloat(document.getElementById('targetCount').value) || 0;
+    const targetCount = document.getElementById('targetCount').value;
+    const recipe = allRecipes[document.getElementById('recipeSelect').value];
+    if (!recipe) return;
+
+    const container = document.getElementById('ingredientList');
+    container.innerHTML = '';
+
+    // 材料かどうかを判定するフィルタ関数
+    function isIngredientLine(item) {
+        const text = item.name + item.amount;
+        // 手順っぽいキーワードや、あまりに長い行は弾く
+        const skipKeywords = ["捏ね", "オーブン", "鍋で", "ふんわり", "ラップ", "予熱", "完成"];
+        if (skipKeywords.some(key => text.includes(key))) return false;
+        if (text.length > 20) return false; // 長すぎる行は手順とみなす
+        return true;
+    }
+
+    function renderSection(title, ingredients) {
+        const filtered = ingredients.filter(isIngredientLine);
+        if (filtered.length === 0) return;
+        
+        addCategoryTitle(container, title);
+        
+        filtered.forEach(item => {
+            const amountStr = item.amount.toString();
+            const match = amountStr.match(/([\d\.]+)/);
             
-            const container = document.getElementById('ingredientList');
-            container.innerHTML = '<h3 class="font-bold text-orange-900 mb-2">計算結果 (' + targetCount + '個分)</h3>';
+            if (match && !amountStr.includes("適量") && !amountStr.includes("たっぷり")) {
+                const baseValue = parseFloat(match[1]);
+                const result = (baseValue * targetCount) / recipe.baseCount;
+                let unit = amountStr.replace(match[1], "").trim();
+                let displayAmount = result % 1 === 0 ? result.toFixed(0) : result.toFixed(1); 
 
-            // 1. 生地用(base)の計算
-            if (recipe.ingredients && recipe.ingredients.base) {
-                recipe.ingredients.base.forEach(ing => {
-                    const amount = (ing.amount / recipe.baseCount) * targetCount;
-                    appendRow(container, ing.name, amount.toFixed(1));
-                });
+                if (unit.includes("大さじ") || unit.includes("小さじ")) {
+                    appendRow(container, item.name, unit + displayAmount, "");
+                } else {
+                    appendRow(container, item.name, displayAmount, unit);
+                }
+            } else {
+                appendRow(container, item.name, amountStr, "");
             }
+        });
+    }
 
-            // 2. 具材用(filling)の計算
-            if (recipe.ingredients && recipe.ingredients.filling && recipe.ingredients.filling.length > 0) {
-                container.innerHTML += '<h3 class="font-bold text-orange-900 mt-4 mb-2">具材</h3>';
-                recipe.ingredients.filling.forEach(ing => {
-                    // 具材は計算せず固定で出す（必要なら計算式を入れてね）
-                    appendRow(container, ing.name, ing.amount.toFixed(1));
-                });
-            }
+    renderSection("生地用", recipe.ingredients.base);
+    // 具材がある場合のみ表示
+    if (recipe.ingredients.filling && recipe.ingredients.filling.length > 0) {
+        renderSection("具材", recipe.ingredients.filling);
+    }
+    renderSection("茹でる用", recipe.ingredients.boiling);
+}
 
-            // 3. 茹でる用(boiling)の計算
-            if (recipe.ingredients && recipe.ingredients.boiling && recipe.ingredients.boiling.length > 0) {
-                container.innerHTML += '<h3 class="font-bold text-orange-900 mt-4 mb-2">茹でる用 (固定)</h3>';
-                recipe.ingredients.boiling.forEach(ing => {
-                    appendRow(container, ing.name, ing.amount.toFixed(1));
-                });
-            }
-        }
-        function appendRow(container, name, amount) {
+        // 表示用関数を1つにまとめる
+        function appendRow(container, name, amount, unit = "g") {
             const div = document.createElement('div');
             div.className = "flex justify-between py-2 border-b border-orange-100 text-sm";
-            div.innerHTML = `<span>${name}</span><span class="font-bold text-orange-900">${amount}g</span>`;
+            // 単位がある場合だけ表示する（空なら何も付けない）
+            const unitDisplay = unit ? unit : "";
+            div.innerHTML = `<span>${name}</span><span class="font-bold text-orange-900">${amount}${unitDisplay}</span>`;
             container.appendChild(div);
+        }
+
+        function addCategoryTitle(container, titleText) {
+            const h3 = document.createElement('h3');
+            h3.className = "font-bold text-orange-900 mt-4 mb-2";
+            h3.innerText = titleText;
+            container.appendChild(h3);
         }
 
         fetchRecipes();
