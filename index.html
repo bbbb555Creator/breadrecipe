@@ -75,17 +75,45 @@
             
             if (recipe.procedures && recipe.procedures.length > 0) {
                 procTitle.classList.remove('hidden');
+                
                 recipe.procedures.forEach(sectionData => {
+                    // 1. セクションタイトルは番号なしで表示（ここが消えていたよ！）
                     const h4 = document.createElement('h4');
                     h4.className = "font-bold text-orange-950 mt-4 mb-1";
                     h4.innerText = "【" + sectionData.section + "】";
                     procContainer.appendChild(h4);
                     
-                    sectionData.steps.forEach(step => {
-                        const div = document.createElement('div');
-                        div.className = "text-sm text-orange-800 ml-2 mb-1";
-                        div.innerHTML = step.replace(/\n/g, '<br>');
-                        procContainer.appendChild(div);
+                    // 2. セクションごとに番号カウンターをリセット
+                    let counter = 0;
+                    
+                    // 3. 手順の中身だけをループ
+                    sectionData.steps.forEach((step) => {
+                        // 【修正】もし「【」で始まる行なら、それはタイトル扱いとして番号を振らない
+                        if (!step || step.trim() === "") return;
+                        
+                        if (step.includes("【") && step.includes("】")) {
+                            // もし手順の中にタイトルっぽいのがあれば普通に表示するだけにする
+                            const p = document.createElement('div');
+                            p.className = "text-sm text-orange-800 font-bold mt-2";
+                            p.innerText = step;
+                            procContainer.appendChild(p);
+                        } else {
+                            // 普通の手順には番号を振る
+                            counter++;
+                            const div = document.createElement('div');
+                            div.className = "text-sm text-orange-800 ml-2 mb-1 flex";
+                            
+                            const number = document.createElement('span');
+                            number.className = "font-bold mr-2 shrink-0";
+                            number.innerText = counter + ".";
+                            
+                            const content = document.createElement('span');
+                            content.innerHTML = step.replace(/\n/g, '<br>');
+                            
+                            div.appendChild(number);
+                            div.appendChild(content);
+                            procContainer.appendChild(div);
+                        }
                     });
                 });
             } else {
@@ -115,10 +143,16 @@
             
             ingredients.forEach(item => {
                 const amountStr = item.amount.toString();
+                // 数値があるかチェック
                 const match = amountStr.match(/([\d\.]+)/);
                 
-                // 「はちみつ」や「お湯」は計算せずにそのまま表示するリスト
-                const isExcluded = ["はちみつ", "お湯"].includes(item.name) || amountStr.includes("適量") || amountStr.includes("たっぷり");
+                // 【重要】これに当てはまる場合は絶対に計算しない！
+                const isExcluded = [
+                    "はちみつ", "お湯", "サラダ油", "パン粉", "水" // 計算したくない材料名
+                ].includes(item.name) || 
+                amountStr.includes("適量") || 
+                amountStr.includes("cm") || // cmが含まれる場合も計算しない
+                amountStr.includes("たっぷり");
                 
                 if (match && !isExcluded) {
                     const baseValue = parseFloat(match[1]);
@@ -132,6 +166,7 @@
                         appendRow(container, item.name, displayAmount, unit);
                     }
                 } else {
+                    // 計算対象外なら、amountStrをそのまま表示！
                     appendRow(container, item.name, amountStr, "");
                 }
             });
