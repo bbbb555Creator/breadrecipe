@@ -5,9 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bunのパン工房</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- PWA設定 -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="orange">
+    <meta name="apple-mobile-web-app-title" content="Bunのパン工房">
 </head>
 <body class="bg-orange-50 min-h-screen p-4">
     <div class="max-w-md mx-auto bg-white rounded-3xl shadow-lg p-6">
+        <!-- インストールボタン -->
+        <button id="installBtn" class="w-full bg-orange-600 text-white font-bold py-2 rounded-lg mb-4 hidden">
+            📱 アプリとしてインストールする
+        </button>
+
         <h1 class="text-2xl font-bold text-orange-800 mb-6 text-center">🍞 Bunのパン工房</h1>
 
         <div class="mb-6">
@@ -32,6 +42,20 @@
     </div>
 
     <script>
+        // PWAインストール案内
+        const installBtn = document.getElementById('installBtn');
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+            installBtn.classList.remove('hidden');
+        }
+        installBtn.addEventListener('click', () => {
+            if (isIOS) {
+                alert("iPhoneの方：画面下の『共有ボタン』を押して、『ホーム画面に追加』を選んでね！");
+            } else {
+                alert("Androidの方：ブラウザの『メニュー』から『アプリをインストール』を選んでね！");
+            }
+        });
+
         let allRecipes = {};
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbxPf6aGtE_j5qRRLuV6tjJ8aMOjaRQfBri3kOsDJ9dmteRgSuQ_7Kerizpi-X79eUaF/exec';
 
@@ -41,7 +65,6 @@
                 const data = await response.json();
                 const select = document.getElementById('recipeSelect');
                 select.innerHTML = '';
-                
                 const seenMenus = new Set();
                 
                 data.forEach(item => {
@@ -49,9 +72,8 @@
                     if (!seenMenus.has(cleanMenu)) {
                         allRecipes[cleanMenu] = item;
                         allRecipes[cleanMenu].menu = cleanMenu;
-                        
                         const option = document.createElement('option');
-                        option.value = cleanMenu; 
+                        option.value = cleanMenu;
                         option.text = cleanMenu;
                         select.appendChild(option);
                         seenMenus.add(cleanMenu);
@@ -77,43 +99,25 @@
                 procTitle.classList.remove('hidden');
                 
                 recipe.procedures.forEach(sectionData => {
-                    // 1. セクションタイトルは番号なしで表示（ここが消えていたよ！）
                     const h4 = document.createElement('h4');
                     h4.className = "font-bold text-orange-950 mt-4 mb-1";
                     h4.innerText = "【" + sectionData.section + "】";
                     procContainer.appendChild(h4);
                     
-                    // 2. セクションごとに番号カウンターをリセット
-                    let counter = 0;
-                    
-                    // 3. 手順の中身だけをループ
-                    sectionData.steps.forEach((step) => {
-                        // 【修正】もし「【」で始まる行なら、それはタイトル扱いとして番号を振らない
+                    let stepCounter = 0;
+                    sectionData.steps.forEach(step => {
                         if (!step || step.trim() === "") return;
-                        
-                        if (step.includes("【") && step.includes("】")) {
-                            // もし手順の中にタイトルっぽいのがあれば普通に表示するだけにする
-                            const p = document.createElement('div');
-                            p.className = "text-sm text-orange-800 font-bold mt-2";
-                            p.innerText = step;
-                            procContainer.appendChild(p);
-                        } else {
-                            // 普通の手順には番号を振る
-                            counter++;
-                            const div = document.createElement('div');
-                            div.className = "text-sm text-orange-800 ml-2 mb-1 flex";
-                            
-                            const number = document.createElement('span');
-                            number.className = "font-bold mr-2 shrink-0";
-                            number.innerText = counter + ".";
-                            
-                            const content = document.createElement('span');
-                            content.innerHTML = step.replace(/\n/g, '<br>');
-                            
-                            div.appendChild(number);
-                            div.appendChild(content);
-                            procContainer.appendChild(div);
-                        }
+                        stepCounter++;
+                        const div = document.createElement('div');
+                        div.className = "text-sm text-orange-800 ml-2 mb-1 flex";
+                        const number = document.createElement('span');
+                        number.className = "font-bold mr-2 shrink-0";
+                        number.innerText = stepCounter + ".";
+                        const content = document.createElement('span');
+                        content.innerHTML = step.replace(/\n/g, '<br>');
+                        div.appendChild(number);
+                        div.appendChild(content);
+                        procContainer.appendChild(div);
                     });
                 });
             } else {
@@ -126,11 +130,8 @@
             const targetCount = document.getElementById('targetCount').value;
             const recipe = allRecipes[document.getElementById('recipeSelect').value];
             if (!recipe) return;
-
             const container = document.getElementById('ingredientList');
             container.innerHTML = '';
-
-            // 各セクションを計算して表示
             renderSection(container, recipe, "生地用", recipe.ingredients.base, targetCount);
             renderSection(container, recipe, "具材", recipe.ingredients.filling, targetCount);
             renderSection(container, recipe, "茹でる用", recipe.ingredients.boiling, targetCount);
@@ -138,35 +139,23 @@
 
         function renderSection(container, recipe, title, ingredients, targetCount) {
             if (!ingredients || ingredients.length === 0) return;
-            
             addCategoryTitle(container, title);
-            
             ingredients.forEach(item => {
                 const amountStr = item.amount.toString();
-                // 数値があるかチェック
                 const match = amountStr.match(/([\d\.]+)/);
-                
-                // 【重要】これに当てはまる場合は絶対に計算しない！
-                const isExcluded = [
-                    "はちみつ", "お湯", "サラダ油", "パン粉", "水" // 計算したくない材料名
-                ].includes(item.name) || 
-                amountStr.includes("適量") || 
-                amountStr.includes("cm") || // cmが含まれる場合も計算しない
-                amountStr.includes("たっぷり");
+                const isExcluded = ["はちみつ", "お湯", "サラダ油", "パン粉", "水"].includes(item.name) || amountStr.includes("適量") || amountStr.includes("cm") || amountStr.includes("たっぷり");
                 
                 if (match && !isExcluded) {
                     const baseValue = parseFloat(match[1]);
                     const result = (baseValue * targetCount) / recipe.baseCount;
                     let unit = amountStr.replace(match[1], "").trim();
-                    let displayAmount = result % 1 === 0 ? result.toFixed(0) : result.toFixed(1); 
-
+                    let displayAmount = result % 1 === 0 ? result.toFixed(0) : result.toFixed(1);
                     if (unit.includes("大さじ") || unit.includes("小さじ")) {
                         appendRow(container, item.name, unit + displayAmount, "");
                     } else {
                         appendRow(container, item.name, displayAmount, unit);
                     }
                 } else {
-                    // 計算対象外なら、amountStrをそのまま表示！
                     appendRow(container, item.name, amountStr, "");
                 }
             });
@@ -175,8 +164,7 @@
         function appendRow(container, name, amount, unit = "g") {
             const div = document.createElement('div');
             div.className = "flex justify-between py-2 border-b border-orange-100 text-sm";
-            const unitDisplay = unit ? unit : "";
-            div.innerHTML = `<span>${name}</span><span class="font-bold text-orange-900">${amount}${unitDisplay}</span>`;
+            div.innerHTML = `<span>${name}</span><span class="font-bold text-orange-900">${amount}${unit || ""}</span>`;
             container.appendChild(div);
         }
 
