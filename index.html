@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bunのパン工房</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- PWA設定 -->
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="orange">
@@ -13,7 +12,6 @@
 </head>
 <body class="bg-orange-50 min-h-screen p-4">
     <div class="max-w-md mx-auto bg-white rounded-3xl shadow-lg p-6">
-        <!-- インストールボタン -->
         <button id="installBtn" class="w-full bg-orange-600 text-white font-bold py-2 rounded-lg mb-4 hidden">
             📱 アプリとしてインストールする
         </button>
@@ -42,18 +40,27 @@
     </div>
 
     <script>
-        // PWAインストール案内
-        const installBtn = document.getElementById('installBtn');
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-        if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-            installBtn.classList.remove('hidden');
-        }
-        installBtn.addEventListener('click', () => {
-            if (isIOS) {
-                alert("iPhoneの方：画面下の『共有ボタン』を押して、『ホーム画面に追加』を選んでね！");
-            } else {
-                alert("Androidの方：ブラウザの『メニュー』から『アプリをインストール』を選んでね！");
+        // 【修正版】PWAインストールボタンの表示制御
+        window.addEventListener('DOMContentLoaded', () => {
+            const installBtn = document.getElementById('installBtn');
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+            
+            // アプリ（スタンドアローン）として開かれているか判定
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+            const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+            // スマホかつ、アプリとして開かれていない場合のみボタンを表示
+            if (isMobile && !isStandalone) {
+                installBtn.classList.remove('hidden');
             }
+
+            installBtn.addEventListener('click', () => {
+                if (isIOS) {
+                    alert("iPhoneの方：画面下の『共有ボタン』を押して、『ホーム画面に追加』を選んでね！");
+                } else {
+                    alert("Androidの方：ブラウザの『メニュー』から『アプリをインストール』を選んでね！");
+                }
+            });
         });
 
         let allRecipes = {};
