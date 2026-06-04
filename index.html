@@ -25,12 +25,17 @@
             </select>
         </div>
 
-        <div class="bg-orange-100 p-4 rounded-2xl mb-6">
+        <div class="bg-orange-100 p-5 rounded-2xl mb-6">
             <div class="flex justify-between items-center mb-4">
-                <span class="text-sm text-orange-900">ベース個数: <span id="baseCountDisplay" class="font-bold">0</span></span>
+                <span class="text-sm text-orange-800">元レシピの個数: <span id="baseCountDisplay" class="font-bold text-orange-950">0</span></span>
             </div>
-            <label class="block text-sm font-bold text-orange-900 mb-2">作りたい個数</label>
-            <input type="number" id="targetCount" value="4" oninput="calculate()" class="w-full p-3 rounded-lg border border-orange-200 text-2xl font-bold text-center">
+            
+            <label class="block text-sm font-bold text-orange-900 mb-2">作りたい個数（ここを変更！）</label>
+            <input type="number" id="targetCount" value="4" oninput="calculate()" class="w-full p-4 rounded-xl border-2 border-orange-300 text-3xl font-bold text-center text-orange-900 focus:outline-none focus:border-orange-500">
+            
+            <p class="text-[10px] text-orange-700 mt-2 text-center opacity-80">
+                ※個数を変えると分量が自動計算されます
+            </p>
         </div>
 
         <div id="ingredientList" class="space-y-2"></div>
@@ -40,16 +45,13 @@
     </div>
 
     <script>
-        // 【修正版】PWAインストールボタンの表示制御
         window.addEventListener('DOMContentLoaded', () => {
             const installBtn = document.getElementById('installBtn');
             const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
             
-            // アプリ（スタンドアローン）として開かれているか判定
             const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
             const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-            // スマホかつ、アプリとして開かれていない場合のみボタンを表示
             if (isMobile && !isStandalone) {
                 installBtn.classList.remove('hidden');
             }
@@ -106,7 +108,6 @@
                 procTitle.classList.remove('hidden');
                 
                 recipe.procedures.forEach(sectionData => {
-                    // セクション全体のタイトル
                     const h4 = document.createElement('h4');
                     h4.className = "font-bold text-orange-950 mt-4 mb-1";
                     h4.innerText = "【" + sectionData.section + "】";
@@ -116,14 +117,12 @@
                     sectionData.steps.forEach(step => {
                         if (!step || step.trim() === "") return;
 
-                        // 【ここを修正】もし【】で始まるなら、見出しとして扱う（番号は振らない）
                         if (step.includes("【") && step.includes("】")) {
                             const subTitle = document.createElement('div');
                             subTitle.className = "font-bold text-orange-900 mt-3 mb-1";
                             subTitle.innerText = step;
                             procContainer.appendChild(subTitle);
                         } else {
-                            // 通常の手順なら番号を振る
                             stepCounter++;
                             const div = document.createElement('div');
                             div.className = "text-sm text-orange-800 ml-2 mb-1 flex";
