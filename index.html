@@ -61,8 +61,10 @@
                     option.text = cleanMenu;
                     select.appendChild(option);
                 });
-                loadRecipe();
-            } catch (e) { console.error(e); }
+            } catch (e) {
+                console.error(e);
+                document.getElementById('recipeSelect').innerHTML = '<option>取得失敗...</option>';
+            }
         }
 
         function loadRecipe() {
@@ -70,7 +72,6 @@
             const recipe = allRecipes[key];
             if (!recipe) return;
 
-            // 画像表示
             const imgContainer = document.getElementById('recipeImageContainer');
             const img = document.getElementById('recipeImage');
             if (recipe.image && recipe.image.startsWith('http')) {
@@ -83,7 +84,6 @@
             document.getElementById('targetCount').value = recipe.baseCount;
             document.getElementById('baseCountDisplay').innerText = recipe.baseCount;
 
-            // 作り方表示
             const procContainer = document.getElementById('procedureList');
             const procTitle = document.getElementById('procedureTitle');
             procContainer.innerHTML = '';
@@ -138,7 +138,12 @@
             container.appendChild(div);
         }
 
-        fetchRecipes();
+        // 初期化処理：データ取得完了を待ってから画面を表示
+        async function init() {
+            await fetchRecipes();
+            loadRecipe();
+        }
+        init();
     </script>
 </body>
 </html>
