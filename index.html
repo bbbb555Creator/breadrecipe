@@ -67,7 +67,7 @@
             }
         }
 
-        async function loadRecipe() {
+        function loadRecipe() {
             const key = document.getElementById('recipeSelect').value;
             const recipe = allRecipes[key];
             if (!recipe) return;
@@ -75,12 +75,13 @@
             const imgContainer = document.getElementById('recipeImageContainer');
             const img = document.getElementById('recipeImage');
             
-            // HTMLの loadRecipe 内の画像表示処理をこれに戻すだけ
-// fetchしなくていいから、爆速になるよ！
-if (recipe.image) {
-    img.src = "https://lh3.googleusercontent.com/d/" + recipe.image; // 直接表示！
-    imgContainer.classList.remove('hidden');
-}
+            // Googleの直接配信URLを使って爆速表示
+            if (recipe.image) {
+                img.src = "https://lh3.googleusercontent.com/d/" + recipe.image;
+                imgContainer.classList.remove('hidden');
+            } else {
+                imgContainer.classList.add('hidden');
+            }
 
             document.getElementById('targetCount').value = recipe.baseCount;
             document.getElementById('baseCountDisplay').innerText = recipe.baseCount;
