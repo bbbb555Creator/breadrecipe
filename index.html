@@ -8,6 +8,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="orange">
     <meta name="apple-mobile-web-app-title" content="Bunのパン工房">
+    <link rel="manifest" href="manifest.json">
 </head>
 <body class="bg-orange-50 min-h-screen p-4">
     <div class="max-w-md mx-auto bg-white rounded-3xl shadow-lg p-6">
@@ -46,6 +47,24 @@
         let allRecipes = {};
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbxPf6aGtE_j5qRRLuV6tjJ8aMOjaRQfBri3kOsDJ9dmteRgSuQ_7Kerizpi-X79eUaF/exec';
 
+        // インストール処理
+        let deferredPrompt;
+        const installBtn = document.getElementById('installBtn');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installBtn.classList.remove('hidden');
+        });
+
+        installBtn.addEventListener('click', (e) => {
+            installBtn.classList.add('hidden');
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then((choiceResult) => {
+                deferredPrompt = null;
+            });
+        });
+
         async function fetchRecipes() {
             try {
                 const response = await fetch(GAS_URL);
@@ -75,7 +94,6 @@
             const imgContainer = document.getElementById('recipeImageContainer');
             const img = document.getElementById('recipeImage');
             
-            // Googleの直接配信URLを使って爆速表示
             if (recipe.image) {
                 img.src = "https://lh3.googleusercontent.com/d/" + recipe.image;
                 imgContainer.classList.remove('hidden');
