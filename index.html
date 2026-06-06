@@ -67,16 +67,25 @@
             }
         }
 
-        function loadRecipe() {
+        async function loadRecipe() {
             const key = document.getElementById('recipeSelect').value;
             const recipe = allRecipes[key];
             if (!recipe) return;
 
             const imgContainer = document.getElementById('recipeImageContainer');
             const img = document.getElementById('recipeImage');
+            
+            // 【修正箇所】Base64データを取得して画像にセットする処理
             if (recipe.image && recipe.image.startsWith('http')) {
-                img.src = recipe.image;
                 imgContainer.classList.remove('hidden');
+                img.src = ""; // 読み込み中の見た目
+                try {
+                    const response = await fetch(recipe.image);
+                    const base64Data = await response.text();
+                    img.src = "data:image/jpeg;base64," + base64Data;
+                } catch (e) {
+                    imgContainer.classList.add('hidden');
+                }
             } else {
                 imgContainer.classList.add('hidden');
             }
@@ -138,7 +147,6 @@
             container.appendChild(div);
         }
 
-        // 初期化処理：データ取得完了を待ってから画面を表示
         async function init() {
             await fetchRecipes();
             loadRecipe();
