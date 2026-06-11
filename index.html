@@ -5,91 +5,86 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bunのパン工房</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="orange">
-    <meta name="apple-mobile-web-app-title" content="Bunのパン工房">
-    <link rel="manifest" href="manifest.json">
 </head>
 <body class="bg-orange-50 min-h-screen p-4">
     <div class="max-w-md mx-auto bg-white rounded-3xl shadow-lg p-6">
-        <button id="guideBtn" class="w-full bg-orange-600 text-white font-bold py-2 rounded-lg mb-4">
-            📱 ホーム画面に追加する方法を見る
-        </button>
-
         <h1 class="text-2xl font-bold text-orange-800 mb-6 text-center">🍞 Bunのパン工房</h1>
 
-        <div id="recipeImageContainer" class="mb-6 hidden">
-            <img id="recipeImage" src="" alt="レシピ写真" class="w-full h-auto max-h-96 object-cover rounded-2xl shadow-md">
+        <div class="flex items-end gap-2 mb-3">
+            <label class="block text-sm font-bold text-orange-900">レシピを選ぶ</label>
+            <span class="text-[10px] text-orange-500 font-medium">← 横にスワイプ →</span>
+        </div>
+        
+        <div id="recipeCards" class="flex overflow-x-auto space-x-4 pb-4 px-2 mb-6 snap-x">
+            <p class="text-orange-500">読み込み中...</p>
         </div>
 
-        <div class="mb-6">
-            <label class="block text-sm font-bold text-orange-900 mb-2">レシピを選ぶ</label>
-            <select id="recipeSelect" onchange="loadRecipe()" class="w-full p-3 rounded-xl border border-orange-200 bg-orange-50 font-bold text-orange-900">
-                <option>読み込み中...</option>
-            </select>
+        <div id="recipeImageContainer" class="mb-6 hidden bg-white p-2 rounded-2xl shadow-inner">
+            <img id="recipeImage" src="" alt="レシピ写真" class="w-full h-64 object-cover rounded-2xl shadow-md">
         </div>
 
         <div class="bg-orange-100 p-5 rounded-2xl mb-6">
             <div class="flex justify-between items-center mb-4">
                 <span class="text-sm text-orange-800">元レシピの個数: <span id="baseCountDisplay" class="font-bold text-orange-950">0</span></span>
             </div>
-            <label class="block text-sm font-bold text-orange-900 mb-2">作りたい個数（ここを変更！）</label>
+            <label class="block text-sm font-bold text-orange-900 mb-2">作りたい個数</label>
             <input type="number" id="targetCount" value="4" oninput="calculate()" class="w-full p-4 rounded-xl border-2 border-orange-300 text-3xl font-bold text-center text-orange-900 focus:outline-none focus:border-orange-500">
         </div>
 
         <div id="ingredientList" class="space-y-2"></div>
-
         <h3 id="procedureTitle" class="font-bold text-orange-900 mt-8 mb-2 hidden">作り方</h3>
         <div id="procedureList" class="text-sm text-orange-800 space-y-2"></div>
     </div>
 
     <script>
-        // ガイドボタンの動作
-        document.getElementById('guideBtn').addEventListener('click', () => {
-            const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-            if (isiOS) {
-                alert("【iPhoneでの追加方法】\n\n1. 画面下または上の「共有」ボタン（四角から矢印が出てるマーク）をタップ。\n2. メニューを下にスクロール。\n3. 「ホーム画面に追加」を選択。\n4. 「追加」を押して完了！");
-            } else {
-                alert("【Androidでの追加方法】\n\n1. ブラウザの右上（またはメニュー）にある「︙」をタップ。\n2. 「ホーム画面に追加」または「アプリをインストール」を選択。\n3. 「追加」を押して完了！");
-            }
-        });
-
         let allRecipes = {};
+        let currentRecipeKey = ""; 
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbxPf6aGtE_j5qRRLuV6tjJ8aMOjaRQfBri3kOsDJ9dmteRgSuQ_7Kerizpi-X79eUaF/exec';
 
         async function fetchRecipes() {
-    try {
-        const response = await fetch(GAS_URL);
-        const data = await response.json();
-        
-        // 【ここを追加】メニュー名（menu）で五十音順（昇順）に並び替える
-        data.sort((a, b) => a.menu.localeCompare(b.menu, 'ja'));
+            try {
+                const response = await fetch(GAS_URL);
+                const data = await response.json();
+                data.sort((a, b) => a.menu.localeCompare(b.menu, 'ja'));
 
-        const select = document.getElementById('recipeSelect');
-                select.innerHTML = '';
+                const container = document.getElementById('recipeCards');
+                container.innerHTML = '';
                 allRecipes = {};
+
                 data.forEach(item => {
                     let cleanMenu = String(item.menu).replace(/[\s\u3000]+/g, "").trim();
                     allRecipes[cleanMenu] = item;
-                    const option = document.createElement('option');
-                    option.value = cleanMenu;
-                    option.text = cleanMenu;
-                    select.appendChild(option);
+
+                    const card = document.createElement('div');
+                    // my-1 を入れて上下の隙間（縁の切れる防止）を確保
+                    card.className = "flex-shrink-0 w-40 h-20 snap-start cursor-pointer transition-transform hover:scale-105 my-1";
+                    card.innerHTML = `
+                        <div class="bg-orange-100 rounded-xl p-2 h-full flex items-center justify-center border-2 border-transparent hover:border-orange-500 hover:shadow-md">
+                            <p class="text-xs font-bold text-orange-900 text-center leading-tight break-words">${cleanMenu}</p>
+                        </div>
+                    `;
+                    card.onclick = () => selectRecipe(cleanMenu);
+                    container.appendChild(card);
                 });
+                
+                if (data.length > 0) selectRecipe(String(data[0].menu).replace(/[\s\u3000]+/g, "").trim());
             } catch (e) {
                 console.error(e);
-                document.getElementById('recipeSelect').innerHTML = '<option>取得失敗...</option>';
+                document.getElementById('recipeCards').innerHTML = '<p class="text-red-500">読み込み失敗...</p>';
             }
         }
 
+        function selectRecipe(key) {
+            currentRecipeKey = key;
+            loadRecipe();
+        }
+
         function loadRecipe() {
-            const key = document.getElementById('recipeSelect').value;
-            const recipe = allRecipes[key];
+            const recipe = allRecipes[currentRecipeKey];
             if (!recipe) return;
 
             const imgContainer = document.getElementById('recipeImageContainer');
             const img = document.getElementById('recipeImage');
-            
             if (recipe.image) {
                 img.src = "https://lh3.googleusercontent.com/d/" + recipe.image;
                 imgContainer.classList.remove('hidden');
@@ -103,19 +98,12 @@
             const procContainer = document.getElementById('procedureList');
             const procTitle = document.getElementById('procedureTitle');
             procContainer.innerHTML = '';
+            
             if (recipe.procedures && recipe.procedures.length > 0) {
                 procTitle.classList.remove('hidden');
-                recipe.procedures.forEach(sectionData => {
-                    const h4 = document.createElement('h4');
-                    h4.className = "font-bold text-orange-950 mt-4 mb-1";
-                    h4.innerText = "【" + sectionData.section + "】";
-                    procContainer.appendChild(h4);
-                    sectionData.steps.forEach((step, idx) => {
-                        const div = document.createElement('div');
-                        div.className = "text-sm text-orange-800 ml-2 mb-1";
-                        div.innerHTML = `<span class="font-bold mr-2">${idx + 1}.</span>${step.replace(/\n/g, '<br>')}`;
-                        procContainer.appendChild(div);
-                    });
+                recipe.procedures.forEach(s => {
+                    procContainer.innerHTML += `<h4 class="font-bold text-orange-950 mt-4">【${s.section}】</h4>`;
+                    s.steps.forEach((step, i) => procContainer.innerHTML += `<div class="text-sm"><b>${i+1}.</b> ${step}</div>`);
                 });
             } else {
                 procTitle.classList.add('hidden');
@@ -125,40 +113,23 @@
 
         function calculate() {
             const targetCount = document.getElementById('targetCount').value;
-            const recipe = allRecipes[document.getElementById('recipeSelect').value];
+            const recipe = allRecipes[currentRecipeKey];
             if (!recipe) return;
             const container = document.getElementById('ingredientList');
             container.innerHTML = '';
-            renderSection(container, recipe, "材料", recipe.ingredients.base, targetCount);
+            
+            if(recipe.ingredients && recipe.ingredients.base) {
+                recipe.ingredients.base.forEach(item => {
+                    const amountStr = item.amount.toString();
+                    const match = amountStr.match(/([\d\.]+)/);
+                    const val = match ? (parseFloat(match[1]) * targetCount) / recipe.baseCount : 0;
+                    const display = match ? val.toFixed(1).replace('.0','') + amountStr.replace(match[1], "") : amountStr;
+                    container.innerHTML += `<div class="flex justify-between py-1 border-b border-orange-100"><span>${item.name}</span><span class="font-bold text-orange-900">${display}</span></div>`;
+                });
+            }
         }
 
-        function renderSection(container, recipe, title, ingredients, targetCount) {
-            if (!ingredients) return;
-            ingredients.forEach(item => {
-                const amountStr = item.amount.toString();
-                const match = amountStr.match(/([\d\.]+)/);
-                if (match) {
-                    const result = (parseFloat(match[1]) * targetCount) / recipe.baseCount;
-                    const unit = amountStr.replace(match[1], "").trim();
-                    appendRow(container, item.name, result.toFixed(1).replace('.0','') + unit);
-                } else {
-                    appendRow(container, item.name, amountStr);
-                }
-            });
-        }
-
-        function appendRow(container, name, amount) {
-            const div = document.createElement('div');
-            div.className = "flex justify-between py-2 border-b border-orange-100 text-sm";
-            div.innerHTML = `<span>${name}</span><span class="font-bold text-orange-900">${amount}</span>`;
-            container.appendChild(div);
-        }
-
-        async function init() {
-            await fetchRecipes();
-            loadRecipe();
-        }
-        init();
+        fetchRecipes();
     </script>
 </body>
 </html>
