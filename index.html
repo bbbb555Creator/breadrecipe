@@ -58,10 +58,14 @@
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbxPf6aGtE_j5qRRLuV6tjJ8aMOjaRQfBri3kOsDJ9dmteRgSuQ_7Kerizpi-X79eUaF/exec';
 
         async function fetchRecipes() {
-            try {
-                const response = await fetch(GAS_URL);
-                const data = await response.json();
-                const select = document.getElementById('recipeSelect');
+    try {
+        const response = await fetch(GAS_URL);
+        const data = await response.json();
+        
+        // 【ここを追加】メニュー名（menu）で五十音順（昇順）に並び替える
+        data.sort((a, b) => a.menu.localeCompare(b.menu, 'ja'));
+
+        const select = document.getElementById('recipeSelect');
                 select.innerHTML = '';
                 allRecipes = {};
                 data.forEach(item => {
