@@ -10,6 +10,14 @@
     <div class="max-w-md mx-auto bg-white rounded-3xl shadow-lg p-6">
         <h1 class="text-2xl font-bold text-orange-800 mb-6 text-center">🍞 Bunのパン工房</h1>
 
+        <div id="finishOverlay" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div class="bg-white p-8 rounded-3xl text-center shadow-2xl max-w-xs w-full">
+                <div class="text-6xl mb-4">🔔</div>
+                <p class="text-xl font-bold text-orange-900 mb-6">時間だよ！</p>
+                <button onclick="dismissAlarm()" class="w-full bg-orange-600 text-white font-bold py-4 rounded-2xl text-lg hover:bg-orange-700 transition">OK</button>
+            </div>
+        </div>
+
         <div class="flex items-end gap-2 mb-3">
             <label class="block text-sm font-bold text-orange-900">レシピを選ぶ</label>
             <span class="text-[10px] text-orange-500 font-medium">← 横にスワイプ →</span>
@@ -32,13 +40,22 @@
         </div>
 
         <div id="ingredientList" class="space-y-2"></div>
+
+        <div id="timerContainer" class="hidden my-6 p-4 bg-orange-800 rounded-2xl text-center text-white shadow-lg">
+            <div class="text-xs font-bold opacity-80">残り時間</div>
+            <div id="timerDisplay" class="text-4xl font-black my-1 tabular-nums">00:00</div>
+            <button onclick="stopTimer()" class="text-xs bg-orange-700 hover:bg-orange-600 px-4 py-1 rounded-full mt-2 transition">停止</button>
+        </div>
+
         <h3 id="procedureTitle" class="font-bold text-orange-900 mt-8 mb-2 hidden">作り方</h3>
+        <p id="timerHint" class="text-[10px] text-orange-400 mb-2 hidden">※色付きの分数はタップでタイマー開始</p>
         <div id="procedureList" class="text-sm text-orange-800 space-y-2"></div>
     </div>
 
     <script>
         let allRecipes = {};
         let currentRecipeKey = ""; 
+        let timerInterval;
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbxPf6aGtE_j5qRRLuV6tjJ8aMOjaRQfBri3kOsDJ9dmteRgSuQ_7Kerizpi-X79eUaF/exec';
 
         async function fetchRecipes() {
@@ -56,7 +73,6 @@
                     allRecipes[cleanMenu] = item;
 
                     const card = document.createElement('div');
-                    // my-1 を入れて上下の隙間（縁の切れる防止）を確保
                     card.className = "flex-shrink-0 w-40 h-20 snap-start cursor-pointer transition-transform hover:scale-105 my-1";
                     card.innerHTML = `
                         <div class="bg-orange-100 rounded-xl p-2 h-full flex items-center justify-center border-2 border-transparent hover:border-orange-500 hover:shadow-md">
@@ -76,6 +92,7 @@
 
         function selectRecipe(key) {
             currentRecipeKey = key;
+            stopTimer();
             loadRecipe();
         }
 
@@ -97,18 +114,58 @@
 
             const procContainer = document.getElementById('procedureList');
             const procTitle = document.getElementById('procedureTitle');
+            const timerHint = document.getElementById('timerHint');
             procContainer.innerHTML = '';
             
             if (recipe.procedures && recipe.procedures.length > 0) {
                 procTitle.classList.remove('hidden');
+                timerHint.classList.remove('hidden');
                 recipe.procedures.forEach(s => {
                     procContainer.innerHTML += `<h4 class="font-bold text-orange-950 mt-4">【${s.section}】</h4>`;
-                    s.steps.forEach((step, i) => procContainer.innerHTML += `<div class="text-sm"><b>${i+1}.</b> ${step}</div>`);
+                    s.steps.forEach((step, i) => {
+                        const linkedStep = step.replace(/(\d+)[\s\u3000\n]*分(?![割の])/g, (match, p1) => {
+                            return `<button onclick="startTimer(${p1})" class="bg-orange-200 hover:bg-orange-300 text-orange-900 px-2 py-0.5 rounded-md font-bold transition underline decoration-orange-400">▶ ${p1}分</button>`;
+                        });
+                        procContainer.innerHTML += `<div class="text-sm py-1"><b>${i+1}.</b> ${linkedStep}</div>`;
+                    });
                 });
             } else {
                 procTitle.classList.add('hidden');
+                timerHint.classList.add('hidden');
             }
             calculate();
+        }
+
+        function startTimer(minutes) {
+            stopTimer();
+            const container = document.getElementById('timerContainer');
+            const display = document.getElementById('timerDisplay');
+            container.classList.remove('hidden');
+            
+            let seconds = minutes * 60;
+            display.innerText = `${String(minutes).padStart(2, '0')}:00`;
+            
+            timerInterval = setInterval(() => {
+                seconds--;
+                let m = Math.floor(seconds / 60);
+                let s = seconds % 60;
+                display.innerText = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+                
+                if (seconds <= 0) {
+                    clearInterval(timerInterval);
+                    document.getElementById('finishOverlay').classList.remove('hidden');
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            clearInterval(timerInterval);
+            document.getElementById('timerContainer').classList.add('hidden');
+        }
+
+        function dismissAlarm() {
+            document.getElementById('finishOverlay').classList.add('hidden');
+            document.getElementById('timerContainer').classList.add('hidden');
         }
 
         function calculate() {
