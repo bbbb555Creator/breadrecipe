@@ -20,7 +20,6 @@
 
         <div class="flex items-end gap-2 mb-3">
             <label class="block text-sm font-bold text-orange-900">レシピを選ぶ</label>
-            <span class="text-[10px] text-orange-500 font-medium">← 横にスワイプ →</span>
         </div>
         
         <div id="recipeCards" class="flex overflow-x-auto space-x-4 pb-4 px-2 mb-6 snap-x">
@@ -74,11 +73,7 @@
 
                     const card = document.createElement('div');
                     card.className = "flex-shrink-0 w-40 h-20 snap-start cursor-pointer transition-transform hover:scale-105 my-1";
-                    card.innerHTML = `
-                        <div class="bg-orange-100 rounded-xl p-2 h-full flex items-center justify-center border-2 border-transparent hover:border-orange-500 hover:shadow-md">
-                            <p class="text-xs font-bold text-orange-900 text-center leading-tight break-words">${cleanMenu}</p>
-                        </div>
-                    `;
+                    card.innerHTML = `<div class="bg-orange-100 rounded-xl p-2 h-full flex items-center justify-center border-2 border-transparent hover:border-orange-500 hover:shadow-md"><p class="text-xs font-bold text-orange-900 text-center leading-tight">${cleanMenu}</p></div>`;
                     card.onclick = () => selectRecipe(cleanMenu);
                     container.appendChild(card);
                 });
@@ -86,7 +81,6 @@
                 if (data.length > 0) selectRecipe(String(data[0].menu).replace(/[\s\u3000]+/g, "").trim());
             } catch (e) {
                 console.error(e);
-                document.getElementById('recipeCards').innerHTML = '<p class="text-red-500">読み込み失敗...</p>';
             }
         }
 
@@ -129,28 +123,55 @@
                         procContainer.innerHTML += `<div class="text-sm py-1"><b>${i+1}.</b> ${linkedStep}</div>`;
                     });
                 });
-            } else {
-                procTitle.classList.add('hidden');
-                timerHint.classList.add('hidden');
             }
             calculate();
+        }
+
+        function calculate() {
+            const targetCount = parseFloat(document.getElementById('targetCount').value);
+            const recipe = allRecipes[currentRecipeKey];
+            if (!recipe || !recipe.ingredients) return;
+            
+            const container = document.getElementById('ingredientList');
+            container.innerHTML = '';
+            
+            // ingredientsの中にある各カテゴリー（base, boiling, fillingなど）を全部回す
+            Object.keys(recipe.ingredients).forEach(category => {
+                const items = recipe.ingredients[category];
+                if (!Array.isArray(items)) return;
+
+                // カテゴリー名を日本語っぽく（もしあれば）
+                const categoryNames = { base: '生地', boiling: '茹でる用', filling: 'フィリング' };
+                const label = categoryNames[category] || category;
+
+                container.innerHTML += `<div class="font-bold text-orange-800 mt-3 border-b border-orange-200">【${label}】</div>`;
+
+                items.forEach(item => {
+                    const amountStr = item.amount ? item.amount.toString() : "";
+                    const match = amountStr.match(/([\d\.]+)/);
+                    const val = match ? (parseFloat(match[1]) * targetCount) / recipe.baseCount : 0;
+                    const display = match ? val.toFixed(1).replace('.0','') + amountStr.replace(match[1], "") : amountStr;
+                    
+                    container.innerHTML += `
+                        <div class="flex justify-between py-1 border-b border-orange-50">
+                            <span class="text-sm">${item.name}</span>
+                            <span class="font-bold text-orange-900">${display}</span>
+                        </div>`;
+                });
+            });
         }
 
         function startTimer(minutes) {
             stopTimer();
             const container = document.getElementById('timerContainer');
-            const display = document.getElementById('timerDisplay');
             container.classList.remove('hidden');
-            
             let seconds = minutes * 60;
-            display.innerText = `${String(minutes).padStart(2, '0')}:00`;
-            
+            document.getElementById('timerDisplay').innerText = `${String(minutes).padStart(2, '0')}:00`;
             timerInterval = setInterval(() => {
                 seconds--;
                 let m = Math.floor(seconds / 60);
                 let s = seconds % 60;
-                display.innerText = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-                
+                document.getElementById('timerDisplay').innerText = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
                 if (seconds <= 0) {
                     clearInterval(timerInterval);
                     document.getElementById('finishOverlay').classList.remove('hidden');
@@ -158,36 +179,8 @@
             }, 1000);
         }
 
-        function stopTimer() {
-            clearInterval(timerInterval);
-            document.getElementById('timerContainer').classList.add('hidden');
-        }
-
-        function dismissAlarm() {
-            document.getElementById('finishOverlay').classList.add('hidden');
-            document.getElementById('timerContainer').classList.add('hidden');
-        }
-
-        function calculate() {
-            const targetCount = document.getElementById('targetCount').value;
-            const recipe = allRecipes[currentRecipeKey];
-            if (!recipe) return;
-            const container = document.getElementById('ingredientList');
-            container.innerHTML = '';
-            
-            // データ構造を確認して、もし recipe.ingredients.base ならそちらを使うように調整
-            const ingredients = recipe.ingredients.base ? recipe.ingredients.base : recipe.ingredients;
-            
-            if(ingredients && Array.isArray(ingredients)) {
-                ingredients.forEach(item => {
-                    const amountStr = item.amount ? item.amount.toString() : "";
-                    const match = amountStr.match(/([\d\.]+)/);
-                    const val = match ? (parseFloat(match[1]) * targetCount) / recipe.baseCount : 0;
-                    const display = match ? val.toFixed(1).replace('.0','') + amountStr.replace(match[1], "") : amountStr;
-                    container.innerHTML += `<div class="flex justify-between py-1 border-b border-orange-100"><span>${item.name}</span><span class="font-bold text-orange-900">${display}</span></div>`;
-                });
-            }
-        }
+        function stopTimer() { clearInterval(timerInterval); document.getElementById('timerContainer').classList.add('hidden'); }
+        function dismissAlarm() { document.getElementById('finishOverlay').classList.add('hidden'); document.getElementById('timerContainer').classList.add('hidden'); }
 
         fetchRecipes();
     </script>
