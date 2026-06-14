@@ -175,9 +175,12 @@
             const container = document.getElementById('ingredientList');
             container.innerHTML = '';
             
-            if(recipe.ingredients && recipe.ingredients.base) {
-                recipe.ingredients.base.forEach(item => {
-                    const amountStr = item.amount.toString();
+            // データ構造を確認して、もし recipe.ingredients.base ならそちらを使うように調整
+            const ingredients = recipe.ingredients.base ? recipe.ingredients.base : recipe.ingredients;
+            
+            if(ingredients && Array.isArray(ingredients)) {
+                ingredients.forEach(item => {
+                    const amountStr = item.amount ? item.amount.toString() : "";
                     const match = amountStr.match(/([\d\.]+)/);
                     const val = match ? (parseFloat(match[1]) * targetCount) / recipe.baseCount : 0;
                     const display = match ? val.toFixed(1).replace('.0','') + amountStr.replace(match[1], "") : amountStr;
