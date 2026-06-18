@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bunのパン工房</title>
+    <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="orange">
     <meta name="apple-mobile-web-app-title" content="Bunのパン工房">
@@ -62,6 +63,22 @@
     </div>
 
     <script>
+        // --- ホーム画面追加用のロジック ---
+        const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+        if (isStandalone) {
+            document.getElementById('guideBtn').classList.add('hidden');
+        }
+
+        document.getElementById('guideBtn').addEventListener('click', () => {
+            const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+            if (isiOS) {
+                alert("【iPhoneでの追加方法】\n\n1. 画面下の「共有」ボタンをタップ。\n2. メニューを下にスクロール。\n3. 「ホーム画面に追加」を選択。\n4. 右上の「追加」を押してね！");
+            } else {
+                alert("【Androidでの追加方法】\n\n1. ブラウザ右上の「︙」メニューをタップ。\n2. 「アプリをインストール」または「ホーム画面に追加」を選択してね！");
+            }
+        });
+
+        // --- レシピ機能 ---
         let allRecipes = [];
         let currentRecipeKey = ""; 
         let timerInterval;
