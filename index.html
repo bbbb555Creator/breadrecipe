@@ -413,25 +413,8 @@
         // 動画などと同じ音声再生の経路はマナーモードでも鳴るため。
         let alarmAudio = null;
         let alarmRepeatId = null;
-        function makeBeepWavUrl() {
-            // キッチンタイマー風の音：短い電子音を4回続けて鳴らし、少し間を置く。
-            // この1周期ぶんを生成し、ループ再生する（止めるまで鳴り続ける）。
-            const rate = 22050;
-            const freq = 2100;
-            const beepLen = 0.13, gap = 0.09, count = 4, tail = 0.8;
-            const cycle = beepLen * count + gap * (count - 1) + tail;
-            const total = Math.floor(rate * cycle);
-            const samples = new Float32Array(total);
-            for (let i = 0; i < count; i++) {
-                const start = Math.floor(rate * (i * (beepLen + gap)));
-                const len = Math.floor(rate * beepLen);
-                for (let j = 0; j < len; j++) {
-                    const t = j / rate;
-                    const env = Math.min(1, j / (rate * 0.005), (len - j) / (rate * 0.005));
-                    const tone = Math.sin(2 * Math.PI * freq * t) + 0.25 * Math.sin(2 * Math.PI * freq * 3 * t);
-                    samples[start + j] = tone * 0.7 * env;
-                }
-            }
+        function wavUrlFromSamples(samples, rate) {
+            const total = samples.length;
             const buffer = new ArrayBuffer(44 + total * 2);
             const view = new DataView(buffer);
             const writeStr = (off, s) => { for (let i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i)); };
@@ -445,56 +428,90 @@
             }
             return URL.createObjectURL(new Blob([buffer], { type: 'audio/wav' }));
         }
+        function makeBeepWavUrl() {
+            // 文吾が送ってくれたキッチンタイマーのサンプル音を実測して再現：
+            // 約2050Hzの短い電子音（0.065秒）を0.125秒間隔で4回、1秒周期で繰り返す。
+            const rate = 22050;
+            const freq = 2050;
+            const beepLen = 0.065, spacing = 0.125, count = 4;
+            const total = rate * 1; // 1周期＝1秒
+            const samples = new Float32Array(total);
+            for (let i = 0; i < count; i++) {
+                const start = Math.floor(rate * i * spacing);
+                const len = Math.floor(rate * beepLen);
+                for (let j = 0; j < len; j++) {
+                    const t = j / rate;
+                    const env = Math.min(1, j / (rate * 0.002), (len - j) / (rate * 0.01));
+                    const tone = Math.sin(2 * Math.PI * freq * t) + 0.55 * Math.sin(2 * Math.PI * freq * 2 * t);
+                    samples[start + j] = (tone / 1.55) * 0.95 * env;
+                }
+            }
+            return wavUrlFromSamples(samples, rate);
+        }
+        function makeSilentWavUrl() {
+            const rate = 22050;
+            return wavUrlFromSamples(new Float32Array(Math.floor(rate * 0.15)), rate);
+        }
+        let alarmWavUrl = null;
+        let alarmPrimed = false;
         function primeAlarm() {
-            // タイマー開始のタップの中で一度無音再生し、終了時に鳴らせるよう解錠しておく
+            // タイマー開始のタップの中で一度だけ「無音の音声」を再生し、終了時に鳴らせるよう解錠しておく。
+            // iPhoneはプログラムからの音量変更が効かない（音量0作戦が使えない）ため、
+            // 音量ではなく「音そのものが無音のクリップ」を使う。
             try {
+                if (!alarmWavUrl) alarmWavUrl = makeBeepWavUrl();
                 if (!alarmAudio) {
                     alarmAudio = new Audio();
-                    alarmAudio.src = makeBeepWavUrl();
-                    alarmAudio.loop = true;
                     alarmAudio.preload = 'auto';
                 }
-                alarmAudio.volume = 0;
+                if (alarmPrimed) return;
+                alarmAudio.src = makeSilentWavUrl();
                 const p = alarmAudio.play();
                 if (p) p.then(() => {
                     try { alarmAudio.pause(); alarmAudio.currentTime = 0; } catch (e) {}
-                    alarmAudio.volume = 1;
-                }).catch(() => { alarmAudio.volume = 1; });
+                    alarmPrimed = true;
+                }).catch(() => {});
             } catch (e) {}
         }
         function playAlarm() {
             if (navigator.vibrate) { try { navigator.vibrate([300, 100, 300, 100, 300]); } catch (e) {} }
+            let elementStarted = false;
             if (alarmAudio) {
                 try {
-                    alarmAudio.currentTime = 0;
-                    alarmAudio.volume = 1;
+                    if (alarmWavUrl && alarmAudio.src !== alarmWavUrl) alarmAudio.src = alarmWavUrl;
+                    alarmAudio.loop = true;
+                    try { alarmAudio.currentTime = 0; } catch (e) {}
                     const p = alarmAudio.play();
-                    if (p) p.catch(() => {});
-                    return;
+                    elementStarted = true;
+                    if (p) p.catch(() => { ringWebAudio(); });
                 } catch (e) {}
             }
+            if (elementStarted) return;
+            ringWebAudio();
+        }
+        function ringWebAudio() {
             if (!audioCtx) return;
             const ringOnce = () => {
                 try {
                     const t0 = audioCtx.currentTime;
-                    [0, 0.22, 0.44, 0.66].forEach(off => {
+                    [0, 0.125, 0.25, 0.375].forEach(off => {
                         const osc = audioCtx.createOscillator();
                         const gain = audioCtx.createGain();
                         osc.type = 'triangle';
-                        osc.frequency.value = 2100;
+                        osc.frequency.value = 2050;
                         gain.gain.setValueAtTime(0.0001, t0 + off);
-                        gain.gain.exponentialRampToValueAtTime(0.4, t0 + off + 0.01);
-                        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + off + 0.13);
+                        gain.gain.exponentialRampToValueAtTime(0.4, t0 + off + 0.005);
+                        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + off + 0.065);
                         osc.connect(gain);
                         gain.connect(audioCtx.destination);
                         osc.start(t0 + off);
-                        osc.stop(t0 + off + 0.15);
+                        osc.stop(t0 + off + 0.075);
                     });
                 } catch (e) {}
             };
             ringOnce();
             clearInterval(alarmRepeatId);
-            alarmRepeatId = setInterval(ringOnce, 1800);
+            alarmRepeatId = setInterval(ringOnce, 1000);
         }
         function stopAlarm() {
             if (alarmAudio) {
