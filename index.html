@@ -412,17 +412,24 @@
         // iPhoneではWeb Audio方式の音がマナーモードで消音されるが、
         // 動画などと同じ音声再生の経路はマナーモードでも鳴るため。
         let alarmAudio = null;
+        let alarmRepeatId = null;
         function makeBeepWavUrl() {
+            // キッチンタイマー風の音：短い電子音を4回続けて鳴らし、少し間を置く。
+            // この1周期ぶんを生成し、ループ再生する（止めるまで鳴り続ける）。
             const rate = 22050;
-            const beep = 0.22, gap = 0.13, count = 3;
-            const total = Math.floor(rate * (beep * count + gap * (count - 1)) + rate * 0.05);
+            const freq = 2100;
+            const beepLen = 0.13, gap = 0.09, count = 4, tail = 0.8;
+            const cycle = beepLen * count + gap * (count - 1) + tail;
+            const total = Math.floor(rate * cycle);
             const samples = new Float32Array(total);
             for (let i = 0; i < count; i++) {
-                const start = Math.floor(rate * i * (beep + gap));
-                const len = Math.floor(rate * beep);
+                const start = Math.floor(rate * (i * (beepLen + gap)));
+                const len = Math.floor(rate * beepLen);
                 for (let j = 0; j < len; j++) {
-                    const env = Math.min(1, j / (rate * 0.01), (len - j) / (rate * 0.01));
-                    samples[start + j] = Math.sin(2 * Math.PI * 880 * (j / rate)) * 0.9 * env;
+                    const t = j / rate;
+                    const env = Math.min(1, j / (rate * 0.005), (len - j) / (rate * 0.005));
+                    const tone = Math.sin(2 * Math.PI * freq * t) + 0.25 * Math.sin(2 * Math.PI * freq * 3 * t);
+                    samples[start + j] = tone * 0.7 * env;
                 }
             }
             const buffer = new ArrayBuffer(44 + total * 2);
@@ -444,6 +451,7 @@
                 if (!alarmAudio) {
                     alarmAudio = new Audio();
                     alarmAudio.src = makeBeepWavUrl();
+                    alarmAudio.loop = true;
                     alarmAudio.preload = 'auto';
                 }
                 alarmAudio.volume = 0;
@@ -466,22 +474,34 @@
                 } catch (e) {}
             }
             if (!audioCtx) return;
-            try {
-                const t0 = audioCtx.currentTime;
-                [0, 0.35, 0.7].forEach(off => {
-                    const osc = audioCtx.createOscillator();
-                    const gain = audioCtx.createGain();
-                    osc.type = 'sine';
-                    osc.frequency.value = 880;
-                    gain.gain.setValueAtTime(0.0001, t0 + off);
-                    gain.gain.exponentialRampToValueAtTime(0.3, t0 + off + 0.02);
-                    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + off + 0.3);
-                    osc.connect(gain);
-                    gain.connect(audioCtx.destination);
-                    osc.start(t0 + off);
-                    osc.stop(t0 + off + 0.32);
-                });
-            } catch (e) {}
+            const ringOnce = () => {
+                try {
+                    const t0 = audioCtx.currentTime;
+                    [0, 0.22, 0.44, 0.66].forEach(off => {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'triangle';
+                        osc.frequency.value = 2100;
+                        gain.gain.setValueAtTime(0.0001, t0 + off);
+                        gain.gain.exponentialRampToValueAtTime(0.4, t0 + off + 0.01);
+                        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + off + 0.13);
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start(t0 + off);
+                        osc.stop(t0 + off + 0.15);
+                    });
+                } catch (e) {}
+            };
+            ringOnce();
+            clearInterval(alarmRepeatId);
+            alarmRepeatId = setInterval(ringOnce, 1800);
+        }
+        function stopAlarm() {
+            if (alarmAudio) {
+                try { alarmAudio.pause(); alarmAudio.currentTime = 0; } catch (e) {}
+            }
+            clearInterval(alarmRepeatId);
+            alarmRepeatId = null;
         }
 
         function startTimer(minutes) {
@@ -502,11 +522,13 @@
         }
 
         function stopTimer() {
+            stopAlarm();
             clearInterval(timerInterval);
             document.getElementById('timerContainer').classList.add('hidden');
             document.getElementById('phone').classList.remove('timer-on');
         }
         function dismissAlarm() {
+            stopAlarm();
             document.getElementById('finishOverlay').classList.add('hidden');
             document.getElementById('timerContainer').classList.add('hidden');
             document.getElementById('phone').classList.remove('timer-on');
