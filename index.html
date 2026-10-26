@@ -10,58 +10,166 @@
     <meta name="theme-color" content="#c2410c">
     <link rel="apple-touch-icon" href="icon-192.png">
     <meta name="apple-mobile-web-app-title" content="Bunのパン工房">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg:#FFF9F2; --card:#FFFFFF; --primary:#C2410C; --primary-dark:#9A3412;
+            --ink:#431407; --ink-sub:#8A5A3B; --line:#F0E0CF; --chip:#FDEBD7;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+        body { background:var(--bg); color:var(--ink); font-family:-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif; }
+        .phone { max-width:430px; margin:0 auto; min-height:100vh; background:var(--bg); position:relative; }
+        .hidden { display:none !important; }
+
+        /* 一覧 */
+        header { padding:22px 20px 14px; border-bottom:1px solid var(--line); }
+        .app-name { font-size:20px; font-weight:800; }
+        .app-sub { font-size:12px; color:var(--ink-sub); margin-top:3px; }
+        .guide-btn { display:block; width:calc(100% - 40px); margin:14px 20px 0; min-height:44px; border:none; border-radius:12px;
+                     background:var(--primary); color:#fff; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; }
+        .search { margin:14px 20px 6px; background:#fff; border:1px solid var(--line); border-radius:12px;
+                  display:flex; align-items:center; gap:8px; padding:0 14px; height:46px; }
+        .search input { border:none; outline:none; font-size:16px; flex:1; color:var(--ink); background:transparent; font-family:inherit; }
+        .search input::placeholder { color:#C9A186; }
+        .list { padding:6px 20px 28px; }
+        .phone.timer-on .list { padding-bottom:120px; }
+        .row { display:flex; align-items:center; gap:14px; width:100%; min-height:76px; padding:12px 0;
+               background:none; border:none; border-bottom:1px solid var(--line); cursor:pointer;
+               text-align:left; font-family:inherit; color:var(--ink); }
+        .row img { width:64px; height:64px; border-radius:12px; object-fit:cover; flex:none;
+                   box-shadow:0 2px 6px rgba(154,52,18,.12); }
+        .row-main { flex:1; min-width:0; }
+        .row-name { display:block; font-size:16px; font-weight:700; line-height:1.35; }
+        .row-count { display:block; font-size:12px; color:var(--ink-sub); margin-top:3px; }
+        .row-arrow { font-size:22px; color:#D9B48F; flex:none; }
+        .empty { text-align:center; color:var(--ink-sub); font-size:14px; padding:24px 0; line-height:1.7; }
+        .retry-btn { margin-top:10px; min-height:44px; padding:0 22px; border:none; border-radius:999px; background:var(--primary);
+                     color:#fff; font-size:14px; font-weight:800; cursor:pointer; font-family:inherit; }
+        .note { font-size:11px; color:#C9A186; text-align:center; padding:0 20px 20px; }
+
+        /* 詳細 */
+        .back { display:flex; align-items:center; min-height:44px; padding:8px 16px 0;
+                color:var(--primary); font-size:15px; font-weight:700; background:none; border:none; cursor:pointer; font-family:inherit; }
+        .hero { width:100%; height:132px; object-fit:cover; display:block; margin-top:6px; }
+        .detail-body { padding:16px 20px 110px; }
+        .phone.timer-on .detail-body { padding-bottom:180px; }
+        .d-title { font-size:21px; font-weight:800; line-height:1.3; }
+        .d-meta { font-size:13px; color:var(--ink-sub); margin-top:4px; }
+        .stepper-row { display:flex; align-items:center; justify-content:space-between; margin:16px 0 2px; }
+        .stepper-label { font-size:14px; font-weight:700; }
+        .stepper { display:flex; align-items:center; gap:12px; }
+        .stepper button { width:44px; height:44px; border-radius:12px; border:1px solid var(--line); cursor:pointer;
+                          background:#fff; color:var(--primary-dark); font-size:20px; font-weight:800; font-family:inherit; }
+        .stepper input.num { width:58px; text-align:center; font-size:17px; font-weight:800; border:none; background:transparent;
+                             color:var(--ink); font-family:inherit; outline:none; }
+        input[type=number]::-webkit-outer-spin-button, input[type=number]::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+        input[type=number] { -moz-appearance:textfield; appearance:textfield; }
+        h2.sec { font-size:16px; font-weight:800; margin:22px 0 10px; padding-bottom:6px; border-bottom:2px solid var(--chip); }
+        h3.cat { font-size:13px; font-weight:800; color:var(--primary); margin:14px 0 6px; }
+        .hint { font-size:11px; color:#C9A186; margin:-2px 0 6px; line-height:1.6; }
+        .ing-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+        .ing { background:#fff; border:1px solid var(--line); border-radius:12px; padding:10px 12px; min-height:58px;
+               cursor:pointer; text-align:left; font-family:inherit; width:100%; color:var(--ink); }
+        .ing .n { display:block; font-size:12.5px; color:var(--ink-sub); line-height:1.35; }
+        .ing .a { display:block; font-size:16px; font-weight:800; margin-top:2px; color:var(--ink); }
+        .ing.done { background:var(--chip); border-color:#F3C48D; }
+        .ing.done .n, .ing.done .a { color:#B98A5F; text-decoration:line-through; }
+        .step { display:flex; gap:14px; padding:14px 10px; border-radius:14px; cursor:pointer; }
+        .step .no { flex:none; width:28px; height:28px; border-radius:50%; border:2px solid #EBCBAA; color:var(--ink-sub);
+                    font-size:13px; font-weight:800; display:flex; align-items:center; justify-content:center; margin-top:2px; background:#fff; }
+        .step p { font-size:16.5px; line-height:1.8; }
+        .step.now { background:#fff; box-shadow:0 4px 14px rgba(154,52,18,.10); }
+        .step.now .no { background:var(--primary); border-color:var(--primary); color:#fff; }
+        .step.now p { font-weight:600; }
+        .step.done p { color:var(--ink-sub); text-decoration:line-through; }
+        .step.done .no { background:var(--chip); border-color:#F3C48D; color:var(--ink-sub); }
+        .chip { display:inline-block; background:var(--chip); color:var(--primary-dark); font-weight:800; font-size:13.5px;
+                border:1.5px solid #F0BE8A; border-radius:999px; padding:0 10px; margin:0 2px; white-space:nowrap;
+                cursor:pointer; font-family:inherit; appearance:none; -webkit-appearance:none; }
+
+        /* タイマーバー（下部固定） */
+        .timerbar { position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:430px; z-index:40;
+                    background:var(--primary-dark); color:#fff; display:flex; align-items:center; gap:12px;
+                    padding:12px 18px calc(12px + env(safe-area-inset-bottom)); box-shadow:0 -4px 16px rgba(67,20,7,.25); }
+        .timerbar .t-label { font-size:11px; opacity:.75; }
+        .timerbar .t-time { font-size:22px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.1; }
+        .timerbar .t-main { flex:1; }
+        .timerbar button { min-height:46px; padding:0 20px; border:none; border-radius:999px; background:#fff;
+                           color:var(--primary-dark); font-size:15px; font-weight:800; cursor:pointer; font-family:inherit; }
+
+        /* 終了オーバーレイ */
+        .overlay { position:fixed; inset:0; z-index:60; background:rgba(67,20,7,.45); display:flex; align-items:center; justify-content:center; padding:16px; }
+        .overlay-card { background:#fff; border-radius:24px; padding:32px; text-align:center; box-shadow:0 20px 50px rgba(67,20,7,.3); max-width:320px; width:100%; }
+        .overlay-bell { font-size:56px; margin-bottom:16px; }
+        .overlay-text { font-size:20px; font-weight:800; color:var(--ink); margin-bottom:24px; }
+        .overlay-btn { width:100%; min-height:52px; border:none; border-radius:16px; background:var(--primary); color:#fff;
+                       font-size:17px; font-weight:800; cursor:pointer; font-family:inherit; }
+    </style>
 </head>
-<body class="bg-orange-50 min-h-screen p-4">
-    <div class="max-w-md mx-auto bg-white rounded-3xl shadow-lg p-6">
-        
-        <button id="guideBtn" class="w-full bg-orange-600 text-white font-bold py-2 rounded-xl mb-6 text-sm hover:bg-orange-700 transition">
-            📱 ホーム画面に追加する方法
-        </button>
+<body>
+    <div class="phone" id="phone">
 
-        <h1 class="text-2xl font-bold text-orange-800 mb-6 text-center">🍞 Bunのパン工房</h1>
-
-        <div class="mb-6">
-            <input type="text" id="searchInput" oninput="filterRecipes()" 
-                   placeholder="🔍 レシピを検索..." 
-                   class="w-full p-4 rounded-xl border-2 border-orange-200 focus:border-orange-500 outline-none text-orange-900">
-        </div>
-
-        <div id="recipeList" class="space-y-2 mb-6 max-h-60 overflow-y-auto pr-2">
-            <p class="text-orange-500 text-center">読み込み中...</p>
-        </div>
-
-        <div id="finishOverlay" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div class="bg-white p-8 rounded-3xl text-center shadow-2xl max-w-xs w-full">
-                <div class="text-6xl mb-4">🔔</div>
-                <p class="text-xl font-bold text-orange-900 mb-6">時間だよ！</p>
-                <button onclick="dismissAlarm()" class="w-full bg-orange-600 text-white font-bold py-4 rounded-2xl text-lg hover:bg-orange-700 transition">OK</button>
+        <!-- 一覧画面 -->
+        <div id="view-list">
+            <button id="guideBtn" class="guide-btn">📱 ホーム画面に追加する方法</button>
+            <header>
+                <div class="app-name">🍞 Bunのパン工房</div>
+                <div class="app-sub" id="appSub">レシピ一覧</div>
+            </header>
+            <div class="search">
+                <span>🔍</span>
+                <input type="text" id="searchInput" placeholder="レシピを検索..." oninput="filterRecipes()">
+            </div>
+            <div id="recipeList" class="list">
+                <p class="empty">読み込み中...</p>
             </div>
         </div>
 
-        <div id="recipeImageContainer" class="mb-6 hidden bg-white p-2 rounded-2xl shadow-inner">
-            <img id="recipeImage" src="" alt="レシピ写真" onerror="document.getElementById('recipeImageContainer').classList.add('hidden')" class="w-full h-64 object-cover rounded-2xl shadow-md">
-        </div>
-
-        <div class="bg-orange-100 p-5 rounded-2xl mb-6">
-            <div class="flex justify-between items-center mb-4">
-                <span class="text-sm text-orange-800">元レシピ個数: <span id="baseCountDisplay" class="font-bold text-orange-950">0</span></span>
+        <!-- 詳細画面 -->
+        <div id="view-detail" class="hidden">
+            <button class="back" onclick="showList()">‹ レシピ一覧</button>
+            <div id="recipeImageContainer" class="hidden">
+                <img id="recipeImage" class="hero" src="" alt="レシピ写真" onerror="document.getElementById('recipeImageContainer').classList.add('hidden')">
             </div>
-            <label class="block text-sm font-bold text-orange-900 mb-2">作りたい個数</label>
-            <input type="number" id="targetCount" value="4" oninput="calculate()" class="w-full p-4 rounded-xl border-2 border-orange-300 text-3xl font-bold text-center text-orange-900 focus:outline-none focus:border-orange-500">
+            <div class="detail-body">
+                <div class="d-title" id="recipeTitle"></div>
+                <div class="d-meta">元のレシピ <span id="baseCountDisplay">0</span>個分</div>
+
+                <div class="stepper-row">
+                    <div class="stepper-label">作りたい個数</div>
+                    <div class="stepper">
+                        <button type="button" onclick="changeCount(-1)" aria-label="減らす">−</button>
+                        <input type="number" id="targetCount" class="num" value="4" oninput="calculate()">
+                        <button type="button" onclick="changeCount(1)" aria-label="増やす">＋</button>
+                    </div>
+                </div>
+
+                <h2 class="sec">材料</h2>
+                <div id="ingredientList"></div>
+
+                <h2 class="sec">作り方</h2>
+                <p class="hint">※色付きの分数はタップでタイマー開始<br>※ステップをタップすると「済み」になります</p>
+                <div id="procedureList"></div>
+            </div>
         </div>
 
-        <div id="ingredientList" class="space-y-2"></div>
-
-        <div id="timerContainer" class="hidden my-6 p-4 bg-orange-800 rounded-2xl text-center text-white shadow-lg">
-            <div class="text-xs font-bold opacity-80">残り時間</div>
-            <div id="timerDisplay" class="text-4xl font-black my-1 tabular-nums">00:00</div>
-            <button onclick="stopTimer()" class="text-xs bg-orange-700 hover:bg-orange-600 px-4 py-1 rounded-full mt-2 transition">停止</button>
+        <!-- タイマーバー -->
+        <div id="timerContainer" class="timerbar hidden">
+            <div class="t-main">
+                <div class="t-label">残り時間</div>
+                <div id="timerDisplay" class="t-time">00:00</div>
+            </div>
+            <button type="button" onclick="stopTimer()">停止</button>
         </div>
 
-        <h3 id="procedureTitle" class="font-bold text-orange-900 mt-8 mb-2 hidden">作り方</h3>
-        <p id="timerHint" class="text-[10px] text-orange-400 mb-2 hidden">※色付きの分数はタップでタイマー開始</p>
-        <div id="procedureList" class="text-sm text-orange-800 space-y-2"></div>
+        <!-- 終了オーバーレイ -->
+        <div id="finishOverlay" class="overlay hidden">
+            <div class="overlay-card">
+                <div class="overlay-bell">🔔</div>
+                <p class="overlay-text">時間だよ！</p>
+                <button type="button" class="overlay-btn" onclick="dismissAlarm()">OK</button>
+            </div>
+        </div>
+
     </div>
 
     <script>
@@ -82,8 +190,11 @@
 
         // --- レシピ機能 ---
         let allRecipes = [];
-        let currentRecipeKey = ""; 
+        let currentRecipeKey = "";
         let timerInterval;
+        let checkedIngs = new Set();
+        let stepDone = new Set();
+        let detailOpen = false;
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbxPf6aGtE_j5qRRLuV6tjJ8aMOjaRQfBri3kOsDJ9dmteRgSuQ_7Kerizpi-X79eUaF/exec';
 
         const CACHE_KEY = 'breadRecipesCacheV1';
@@ -95,7 +206,6 @@
                     if (cached) {
                         allRecipes = JSON.parse(cached).sort((a, b) => a.menu.localeCompare(b.menu, 'ja'));
                         renderRecipeList(allRecipes);
-                        if (allRecipes.length > 0) selectRecipe(allRecipes[0].menu);
                     }
                 } catch (e) {}
             }
@@ -106,24 +216,37 @@
                 allRecipes = data.sort((a, b) => a.menu.localeCompare(b.menu, 'ja'));
                 try { localStorage.setItem(CACHE_KEY, JSON.stringify(data)); } catch (e) {}
                 renderRecipeList(allRecipes);
-                if (keep && allRecipes.some(r => r.menu === keep)) selectRecipe(keep);
-                else if (allRecipes.length > 0) selectRecipe(allRecipes[0].menu);
+                if (keep && allRecipes.some(r => r.menu === keep)) {
+                    currentRecipeKey = keep;
+                    if (detailOpen) { stopTimer(); loadRecipe(); }
+                }
             } catch (e) {
                 if (!allRecipes.length) {
-                    document.getElementById('recipeList').innerHTML = '<p class="text-orange-500 text-center">読み込み失敗...<br><button onclick="fetchRecipes()" class="mt-3 bg-orange-600 text-white font-bold px-4 py-2 rounded-xl">もう一度読み込む</button></p>';
+                    document.getElementById('recipeList').innerHTML = '<p class="empty">読み込み失敗...<br><button type="button" onclick="fetchRecipes()" class="retry-btn">もう一度読み込む</button></p>';
                 }
             }
         }
 
         function renderRecipeList(recipes) {
+            document.getElementById('appSub').textContent = 'レシピ ' + allRecipes.length + ' 件';
             const container = document.getElementById('recipeList');
             container.innerHTML = '';
+            if (!recipes.length) {
+                container.innerHTML = '<p class="empty">該当するレシピがありません</p>';
+                return;
+            }
             recipes.forEach(item => {
-                const div = document.createElement('div');
-                div.className = "p-4 bg-white rounded-xl border border-orange-200 shadow-sm cursor-pointer hover:bg-orange-100 transition";
-                div.innerHTML = `<p class="font-bold text-orange-900">${item.menu}</p>`;
-                div.onclick = () => selectRecipe(item.menu);
-                container.appendChild(div);
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'row';
+                let inner = '';
+                if (item.image) {
+                    inner += `<img src="https://lh3.googleusercontent.com/d/${item.image}" alt="${item.menu}" loading="lazy" onerror="this.style.display='none'">`;
+                }
+                inner += `<span class="row-main"><span class="row-name">${item.menu}</span><span class="row-count">${item.baseCount}個分</span></span><span class="row-arrow">›</span>`;
+                btn.innerHTML = inner;
+                btn.onclick = () => selectRecipe(item.menu);
+                container.appendChild(btn);
             });
         }
 
@@ -136,34 +259,69 @@
         function selectRecipe(menuName) {
             currentRecipeKey = menuName;
             stopTimer();
+            detailOpen = true;
+            document.getElementById('view-list').classList.add('hidden');
+            document.getElementById('view-detail').classList.remove('hidden');
             loadRecipe();
+            requestWakeLock();
+            window.scrollTo(0, 0);
+        }
+
+        function showList() {
+            detailOpen = false;
+            document.getElementById('view-detail').classList.add('hidden');
+            document.getElementById('view-list').classList.remove('hidden');
+            releaseWakeLock();
+            window.scrollTo(0, 0);
         }
 
         function loadRecipe() {
             const recipe = allRecipes.find(r => r.menu === currentRecipeKey);
             if (!recipe) return;
             const imgContainer = document.getElementById('recipeImageContainer');
-            if (recipe.image) { 
-                document.getElementById('recipeImage').src = "https://lh3.googleusercontent.com/d/" + recipe.image; 
-                imgContainer.classList.remove('hidden'); 
+            if (recipe.image) {
+                document.getElementById('recipeImage').src = "https://lh3.googleusercontent.com/d/" + recipe.image;
+                imgContainer.classList.remove('hidden');
             } else { imgContainer.classList.add('hidden'); }
-            
+
+            document.getElementById('recipeTitle').textContent = recipe.menu;
             document.getElementById('targetCount').value = recipe.baseCount;
             document.getElementById('baseCountDisplay').innerText = recipe.baseCount;
-            
+
+            checkedIngs = new Set();
+            stepDone = new Set();
+
             const procContainer = document.getElementById('procedureList');
             procContainer.innerHTML = '';
-            document.getElementById('procedureTitle').classList.remove('hidden');
-            document.getElementById('timerHint').classList.remove('hidden');
-            
+            let g = 0;
             (recipe.procedures || []).forEach(s => {
-                procContainer.innerHTML += `<h4 class="font-bold text-orange-950 mt-4">【${s.section}】</h4>`;
+                procContainer.innerHTML += `<h3 class="cat">【${s.section}】</h3>`;
                 s.steps.forEach((step, i) => {
-                    const linkedStep = step.replace(/(\d+)[\s\u3000\n]*分(?![割の])/g, (match, p1) => `<button onclick="startTimer(${p1})" class="bg-orange-200 hover:bg-orange-300 text-orange-900 px-2 py-0.5 rounded-md font-bold transition underline decoration-orange-400">▶ ${p1}分</button>`);
-                    procContainer.innerHTML += `<div class="text-sm py-1"><b>${i+1}.</b> ${linkedStep}</div>`;
+                    const linkedStep = step.replace(/(\d+)[\s\u3000\n]*分(?![割の])/g, (match, p1) => `<button type="button" class="chip" data-min="${p1}">▶ ${p1}分</button>`);
+                    procContainer.innerHTML += `<div class="step" data-gidx="${g}"><div class="no">${i+1}</div><p>${linkedStep}</p></div>`;
+                    g++;
                 });
             });
+            updateStepStates();
             calculate();
+        }
+
+        function updateStepStates() {
+            const steps = document.getElementById('procedureList').querySelectorAll('.step');
+            let nowSet = false;
+            steps.forEach(el => {
+                const idx = parseInt(el.dataset.gidx, 10);
+                const isDone = stepDone.has(idx);
+                el.classList.toggle('done', isDone);
+                const isNow = !isDone && !nowSet;
+                if (isNow) nowSet = true;
+                el.classList.toggle('now', isNow);
+            });
+        }
+
+        function toggleStep(gidx) {
+            if (stepDone.has(gidx)) stepDone.delete(gidx); else stepDone.add(gidx);
+            updateStepStates();
         }
 
         // 分量の換算：数字が1つだけで、範囲・分数・長さ(cm/mm)でないものだけを、
@@ -178,24 +336,70 @@
             return s.replace(nums[0], text);
         }
 
+        function changeCount(d) {
+            const input = document.getElementById('targetCount');
+            const recipe = allRecipes.find(r => r.menu === currentRecipeKey);
+            const raw = parseFloat(input.value);
+            const cur = (isNaN(raw) || raw <= 0) ? (recipe ? recipe.baseCount : 1) : raw;
+            input.value = Math.max(1, cur + d);
+            calculate();
+        }
+
         function calculate() {
+            const targetCount = parseFloat(document.getElementById('targetCount').value);
             const recipe = allRecipes.find(r => r.menu === currentRecipeKey);
             if (!recipe || !recipe.ingredients) return;
-            const rawTarget = parseFloat(document.getElementById('targetCount').value);
-            const targetCount = (isNaN(rawTarget) || rawTarget <= 0) ? recipe.baseCount : rawTarget;
-            const ratio = targetCount / recipe.baseCount;
+            const target = (isNaN(targetCount) || targetCount <= 0) ? recipe.baseCount : targetCount;
+            const ratio = target / recipe.baseCount;
             const container = document.getElementById('ingredientList');
             container.innerHTML = '';
             Object.keys(recipe.ingredients).forEach(category => {
                 const items = recipe.ingredients[category];
                 const categoryNames = { base: '生地', boiling: '茹でる用', filling: 'フィリング' };
-                container.innerHTML += `<div class="font-bold text-orange-800 mt-3 border-b border-orange-200">【${categoryNames[category] || category}】</div>`;
-                items.forEach(item => {
+                container.innerHTML += `<h3 class="cat">【${categoryNames[category] || category}】</h3>`;
+                let grid = '<div class="ing-grid">';
+                items.forEach((item, idx) => {
                     const display = scaleAmount(item.amount, ratio);
-                    container.innerHTML += `<div class="flex justify-between py-1 border-b border-orange-50"><span class="text-sm">${item.name}</span><span class="font-bold text-orange-900">${display}</span></div>`;
+                    const key = category + ':' + idx;
+                    const done = checkedIngs.has(key) ? ' done' : '';
+                    grid += `<button type="button" class="ing${done}" data-key="${key}"><span class="n">${item.name}</span><span class="a">${display}</span></button>`;
                 });
+                grid += '</div>';
+                container.innerHTML += grid;
             });
         }
+
+        // --- 画面スリープ防止（Wake Lock） ---
+        let wakeLock = null;
+        async function requestWakeLock() {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    wakeLock.addEventListener('release', () => { wakeLock = null; });
+                }
+            } catch (e) {}
+        }
+        function releaseWakeLock() {
+            try { if (wakeLock) { wakeLock.release(); wakeLock = null; } } catch (e) {}
+        }
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && detailOpen && !wakeLock) requestWakeLock();
+        });
+
+        // --- 材料チェック／手順タップ（イベント委譲） ---
+        document.getElementById('ingredientList').addEventListener('click', (e) => {
+            const ing = e.target.closest('.ing');
+            if (!ing) return;
+            const key = ing.dataset.key;
+            if (checkedIngs.has(key)) checkedIngs.delete(key); else checkedIngs.add(key);
+            ing.classList.toggle('done', checkedIngs.has(key));
+        });
+        document.getElementById('procedureList').addEventListener('click', (e) => {
+            const chip = e.target.closest('button.chip');
+            if (chip) { startTimer(parseInt(chip.dataset.min, 10)); return; }
+            const stepEl = e.target.closest('.step');
+            if (stepEl) toggleStep(parseInt(stepEl.dataset.gidx, 10));
+        });
 
         let audioCtx = null;
         function ensureAudio() {
@@ -229,6 +433,7 @@
             ensureAudio();
             stopTimer();
             document.getElementById('timerContainer').classList.remove('hidden');
+            document.getElementById('phone').classList.add('timer-on');
             let seconds = minutes * 60;
             document.getElementById('timerDisplay').innerText = `${String(minutes).padStart(2, '0')}:00`;
             timerInterval = setInterval(() => {
@@ -240,8 +445,16 @@
             }, 1000);
         }
 
-        function stopTimer() { clearInterval(timerInterval); document.getElementById('timerContainer').classList.add('hidden'); }
-        function dismissAlarm() { document.getElementById('finishOverlay').classList.add('hidden'); document.getElementById('timerContainer').classList.add('hidden'); }
+        function stopTimer() {
+            clearInterval(timerInterval);
+            document.getElementById('timerContainer').classList.add('hidden');
+            document.getElementById('phone').classList.remove('timer-on');
+        }
+        function dismissAlarm() {
+            document.getElementById('finishOverlay').classList.add('hidden');
+            document.getElementById('timerContainer').classList.add('hidden');
+            document.getElementById('phone').classList.remove('timer-on');
+        }
 
         fetchRecipes();
     </script>
