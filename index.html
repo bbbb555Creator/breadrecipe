@@ -197,6 +197,19 @@
         let detailOpen = false;
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbxPf6aGtE_j5qRRLuV6tjJ8aMOjaRQfBri3kOsDJ9dmteRgSuQ_7Kerizpi-X79eUaF/exec';
 
+        // --- 利用カウント（裏側で数えるだけ。画面には何も表示しない） ---
+        // 自分の端末を除外する: アプリのURLの末尾に #owner を付けて1回開くと、その端末は数えなくなる
+        const OWNER_KEY = 'breadAppOwner';
+        try {
+            if (location.hash === '#owner') localStorage.setItem(OWNER_KEY, '1');
+        } catch (e) {}
+        function sendUsagePing() {
+            try {
+                if (localStorage.getItem(OWNER_KEY)) return;
+                fetch(GAS_URL + '?ping=1', { mode: 'no-cors', keepalive: true }).catch(() => {});
+            } catch (e) {}
+        }
+
         const CACHE_KEY = 'breadRecipesCacheV1';
         async function fetchRecipes() {
             // 前回のデータがあれば先に表示する（開いてすぐ使えるように）
@@ -551,6 +564,7 @@
             document.getElementById('phone').classList.remove('timer-on');
         }
 
+        sendUsagePing();
         fetchRecipes();
     </script>
 </body>
