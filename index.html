@@ -55,6 +55,13 @@
                             font-size:15px; font-weight:700; color:var(--ink); }
         .fav-btn { flex:none; width:44px; height:44px; margin-right:-8px; background:none; border:none; cursor:pointer;
                    font-size:24px; line-height:1; color:#C9A186; font-family:inherit; }
+        .fav-hint { position:absolute; top:calc(100% + 7px); right:12px; z-index:31; pointer-events:none;
+                    background:var(--primary-dark); color:#fff; font-size:12.5px; font-weight:700;
+                    padding:8px 12px; border-radius:10px; box-shadow:0 6px 18px rgba(67,20,7,.25);
+                    opacity:0; transition:opacity .3s; white-space:nowrap; }
+        .fav-hint.show { opacity:1; }
+        .fav-hint::before { content:''; position:absolute; top:-5px; right:16px; width:10px; height:10px;
+                            background:var(--primary-dark); transform:rotate(45deg); }
         .fav-btn.on { color:#E8930C; }
         .row-star { flex:none; color:#E8930C; font-size:14px; }
         .fav-filter { display:flex; gap:8px; margin:10px 20px 2px; }
@@ -146,6 +153,7 @@
                 <button class="back" onclick="showList()">‹ レシピ一覧</button>
                 <div class="detail-bar-title" id="detailBarTitle"></div>
                 <button type="button" class="fav-btn" id="favBtn" onclick="toggleFavorite()" aria-label="お気に入り登録">☆</button>
+                <div class="fav-hint" id="favHint">★ お気に入り登録はここから</div>
             </div>
             <div id="recipeImageContainer" class="hidden">
                 <img id="recipeImage" class="hero" src="" alt="レシピ写真" onerror="document.getElementById('recipeImageContainer').classList.add('hidden')">
@@ -287,6 +295,27 @@
             updateFavBtn();
             updateFavFilter();
             applyFilters();
+            hideFavHint(true);
+        }
+
+        // 初回だけの小さな案内（吹き出し）：お気に入り未登録の間だけ、詳細を開いたときに数秒出す（最大3回まで）
+        const FAVHINT_KEY = 'breadFavHintV1';
+        let favHintTimer = null;
+        function favHintCount() {
+            try { return parseInt(localStorage.getItem(FAVHINT_KEY) || '0', 10) || 0; } catch (e) { return 99; }
+        }
+        function maybeShowFavHint() {
+            const hint = document.getElementById('favHint');
+            if (favorites.size > 0 || favHintCount() >= 3) { hint.classList.remove('show'); return; }
+            try { localStorage.setItem(FAVHINT_KEY, String(favHintCount() + 1)); } catch (e) {}
+            hint.classList.add('show');
+            clearTimeout(favHintTimer);
+            favHintTimer = setTimeout(() => hint.classList.remove('show'), 4000);
+        }
+        function hideFavHint(done) {
+            document.getElementById('favHint').classList.remove('show');
+            clearTimeout(favHintTimer);
+            if (done) { try { localStorage.setItem(FAVHINT_KEY, '99'); } catch (e) {} }
         }
         function updateFavFilter() {
             const has = favorites.size > 0;
@@ -364,6 +393,7 @@
             document.getElementById('recipeTitle').textContent = recipe.menu;
             document.getElementById('detailBarTitle').textContent = recipe.menu;
             updateFavBtn();
+            maybeShowFavHint();
             document.getElementById('targetCount').value = recipe.baseCount;
             document.getElementById('baseCountDisplay').innerText = recipe.baseCount;
 
