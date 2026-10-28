@@ -53,6 +53,14 @@
                 color:var(--primary); font-size:15px; font-weight:700; background:none; border:none; cursor:pointer; font-family:inherit; }
         .detail-bar-title { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
                             font-size:15px; font-weight:700; color:var(--ink); }
+        .fav-btn { flex:none; width:44px; height:44px; margin-right:-8px; background:none; border:none; cursor:pointer;
+                   font-size:24px; line-height:1; color:#C9A186; font-family:inherit; }
+        .fav-btn.on { color:#E8930C; }
+        .row-star { flex:none; color:#E8930C; font-size:14px; }
+        .fav-filter { display:flex; gap:8px; margin:10px 20px 2px; }
+        .fav-filter button { min-height:36px; padding:0 16px; border-radius:999px; border:1px solid var(--line);
+                             background:#fff; color:var(--ink-sub); font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; }
+        .fav-filter button.on { background:var(--primary); border-color:var(--primary); color:#fff; }
         .hero { width:100%; height:132px; object-fit:cover; display:block; margin-top:6px; }
         .detail-body { padding:16px 20px 110px; }
         .phone.timer-on .detail-body { padding-bottom:180px; }
@@ -123,6 +131,10 @@
                 <span>🔍</span>
                 <input type="text" id="searchInput" placeholder="レシピを検索..." oninput="filterRecipes()">
             </div>
+            <div id="favFilter" class="fav-filter hidden">
+                <button type="button" id="favFilterAll" class="on" onclick="setFavOnly(false)">すべて</button>
+                <button type="button" id="favFilterFav" onclick="setFavOnly(true)">★ お気に入り</button>
+            </div>
             <div id="recipeList" class="list">
                 <p class="empty">読み込み中...</p>
             </div>
@@ -133,6 +145,7 @@
             <div class="detail-bar">
                 <button class="back" onclick="showList()">‹ レシピ一覧</button>
                 <div class="detail-bar-title" id="detailBarTitle"></div>
+                <button type="button" class="fav-btn" id="favBtn" onclick="toggleFavorite()" aria-label="お気に入り登録">☆</button>
             </div>
             <div id="recipeImageContainer" class="hidden">
                 <img id="recipeImage" class="hero" src="" alt="レシピ写真" onerror="document.getElementById('recipeImageContainer').classList.add('hidden')">
@@ -252,8 +265,51 @@
             }
         }
 
+        // --- お気に入り（端末内に保存） ---
+        const FAV_KEY = 'breadFavoritesV1';
+        let favorites = new Set();
+        try { favorites = new Set(JSON.parse(localStorage.getItem(FAV_KEY) || '[]')); } catch (e) {}
+        let favOnly = false;
+        function saveFavorites() {
+            try { localStorage.setItem(FAV_KEY, JSON.stringify([...favorites])); } catch (e) {}
+        }
+        function updateFavBtn() {
+            const btn = document.getElementById('favBtn');
+            const on = favorites.has(currentRecipeKey);
+            btn.textContent = on ? '★' : '☆';
+            btn.classList.toggle('on', on);
+        }
+        function toggleFavorite() {
+            if (!currentRecipeKey) return;
+            if (favorites.has(currentRecipeKey)) favorites.delete(currentRecipeKey);
+            else favorites.add(currentRecipeKey);
+            saveFavorites();
+            updateFavBtn();
+            updateFavFilter();
+            applyFilters();
+        }
+        function updateFavFilter() {
+            const has = favorites.size > 0;
+            document.getElementById('favFilter').classList.toggle('hidden', !has);
+            if (!has && favOnly) favOnly = false;
+            document.getElementById('favFilterAll').classList.toggle('on', !favOnly);
+            document.getElementById('favFilterFav').classList.toggle('on', favOnly);
+        }
+        function setFavOnly(v) {
+            favOnly = v;
+            updateFavFilter();
+            applyFilters();
+        }
+        function applyFilters() {
+            const keyword = document.getElementById('searchInput').value.toLowerCase();
+            let filtered = allRecipes.filter(item => item.menu.toLowerCase().includes(keyword));
+            if (favOnly) filtered = filtered.filter(item => favorites.has(item.menu));
+            renderRecipeList(filtered);
+        }
+
         function renderRecipeList(recipes) {
             document.getElementById('appSub').textContent = 'レシピ ' + allRecipes.length + ' 件';
+            updateFavFilter();
             const container = document.getElementById('recipeList');
             container.innerHTML = '';
             if (!recipes.length) {
@@ -268,18 +324,14 @@
                 if (item.image) {
                     inner += `<img src="https://lh3.googleusercontent.com/d/${item.image}" alt="${item.menu}" loading="lazy" onerror="this.style.display='none'">`;
                 }
-                inner += `<span class="row-main"><span class="row-name">${item.menu}</span><span class="row-count">${item.baseCount}個分</span></span><span class="row-arrow">›</span>`;
+                inner += `<span class="row-main"><span class="row-name">${item.menu}</span><span class="row-count">${item.baseCount}個分</span></span>${favorites.has(item.menu) ? '<span class="row-star">★</span>' : ''}<span class="row-arrow">›</span>`;
                 btn.innerHTML = inner;
                 btn.onclick = () => selectRecipe(item.menu);
                 container.appendChild(btn);
             });
         }
 
-        function filterRecipes() {
-            const keyword = document.getElementById('searchInput').value.toLowerCase();
-            const filtered = allRecipes.filter(item => item.menu.toLowerCase().includes(keyword));
-            renderRecipeList(filtered);
-        }
+        function filterRecipes() { applyFilters(); }
 
         function selectRecipe(menuName) {
             currentRecipeKey = menuName;
@@ -311,6 +363,7 @@
 
             document.getElementById('recipeTitle').textContent = recipe.menu;
             document.getElementById('detailBarTitle').textContent = recipe.menu;
+            updateFavBtn();
             document.getElementById('targetCount').value = recipe.baseCount;
             document.getElementById('baseCountDisplay').innerText = recipe.baseCount;
 
