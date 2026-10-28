@@ -217,6 +217,11 @@
             } catch (e) {}
         }
 
+        // --- Service Worker（ホーム画面アプリでも新しい版が届くように） ---
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch(() => {});
+        }
+
         const CACHE_KEY = 'breadRecipesCacheV1';
         async function fetchRecipes() {
             // 前回のデータがあれば先に表示する（開いてすぐ使えるように）
