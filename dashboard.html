@@ -269,7 +269,8 @@ function renderPosts(reset) {
   const html = list.slice(0, postShown).map((p, i) =>
     '<div class="post" data-i="' + i + '">' +
     (p.img ? '<img src="https://lh3.googleusercontent.com/d/' + p.img + '" loading="lazy" onerror="this.style.display=\'none\'">' : '') +
-    '<div class="pm"><div class="pmenu">' + esc(p.menu || '(メニュー不明)') + '</div>' +
+    '<div class="pm"><div class="pmenu">' + esc(p.menu || '(メニュー不明)') +
+    (p.kind ? ' <span style="font-size:11px;background:#FFF3E4;border-radius:999px;padding:2px 8px;color:#9A3412;">' + (p.kind === 'リール' ? '🎬 ' : '📷 ') + esc(p.kind) + '</span>' : '') + '</div>' +
     '<div class="pmeta">' + esc(p.date) + ' ・ ' + esc(p.cat) + ' ・ ♥ ' + p.likes + ' ・ 💬 ' + p.comments + '</div>' +
     '<div class="detail"><div class="cap">' + esc(p.caption) + '</div>' +
     (p.ai ? '<div class="ai"><div class="ailabel">AIの分析</div>' + esc(p.ai) + '</div>' : '') +
