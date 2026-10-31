@@ -234,7 +234,23 @@
         function sendUsagePing() {
             try {
                 if (localStorage.getItem(OWNER_KEY)) return;
-                fetch(GAS_URL + '?ping=1', { mode: 'no-cors', keepalive: true }).catch(() => {});
+                // 流入元の判定: URLの ?from= を最優先。無ければリンク元（リファラ）で判定する
+                let src = '';
+                try { src = new URLSearchParams(location.search).get('from') || ''; } catch (e) {}
+                if (!src) {
+                    const ref = document.referrer || '';
+                    if (ref.includes('instagram.com')) src = 'instagram';
+                    else if (ref.includes('threads.com') || ref.includes('threads.net')) src = 'threads';
+                    else if (ref.includes('note.com')) src = 'note';
+                }
+                // 常連の判定: この端末で前に開いた記録があるか
+                const VISIT_KEY = 'breadAppVisited';
+                const rep = localStorage.getItem(VISIT_KEY) ? '1' : '';
+                try { localStorage.setItem(VISIT_KEY, '1'); } catch (e) {}
+                let q = '?ping=1';
+                if (src) q += '&from=' + encodeURIComponent(src);
+                if (rep) q += '&rep=1';
+                fetch(GAS_URL + q, { mode: 'no-cors', keepalive: true }).catch(() => {});
             } catch (e) {}
         }
 
