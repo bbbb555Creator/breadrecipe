@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bunのダッシュボード</title>
+<meta name="theme-color" content="#C2410C">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif; background:#FFF9F2; color:#431407; }
+  header { position:sticky; top:0; z-index:20; background:#C2410C; color:#FFF9F2; padding:12px 16px; display:flex; align-items:center; gap:8px; }
+  header .title { font-size:17px; font-weight:700; flex:1; }
+  header .updated { font-size:11px; opacity:.85; }
+  header button { background:rgba(255,255,255,.18); color:#fff; border:0; border-radius:8px; padding:6px 10px; font-size:13px; }
+  nav.tabs { position:sticky; top:49px; z-index:19; display:flex; background:#FFF3E4; border-bottom:1px solid #F3D9BE; }
+  nav.tabs button { flex:1; padding:10px 2px; font-size:13px; background:none; border:0; color:#7C2D12; border-bottom:3px solid transparent; }
+  nav.tabs button.active { border-bottom-color:#C2410C; font-weight:700; color:#C2410C; }
+  main { padding:14px 14px 40px; max-width:720px; margin:0 auto; }
+  .card { background:#fff; border:1px solid #F3D9BE; border-radius:14px; padding:14px; margin-bottom:12px; }
+  .card h2 { font-size:14px; color:#9A3412; margin-bottom:10px; }
+  .big { font-size:34px; font-weight:800; color:#C2410C; }
+  .rowflex { display:flex; gap:10px; }
+  .mini { flex:1; background:#FFF9F2; border-radius:10px; padding:10px; text-align:center; }
+  .mini .n { font-size:20px; font-weight:700; }
+  .mini .l { font-size:11px; color:#9A3412; margin-top:2px; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+  .chip { font-size:12px; background:#FFF3E4; border-radius:999px; padding:4px 10px; }
+  .chip b { color:#C2410C; }
+  .bars { display:flex; align-items:flex-end; gap:4px; height:90px; margin-top:12px; }
+  .bar { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; min-width:0; }
+  .bar .col { width:100%; background:#EA7B3C; border-radius:4px 4px 0 0; min-height:2px; }
+  .bar .v { font-size:10px; color:#7C2D12; }
+  .bar .d { font-size:9px; color:#B08968; white-space:nowrap; }
+  ol.rank { list-style:none; }
+  ol.rank li { display:flex; gap:8px; padding:7px 0; border-bottom:1px dashed #F3D9BE; font-size:14px; align-items:baseline; }
+  ol.rank li:last-child { border-bottom:0; }
+  .rk { font-weight:800; color:#C2410C; width:26px; flex:none; }
+  .rm { flex:1; min-width:0; }
+  .rc { color:#9A3412; font-size:13px; flex:none; }
+  .empty { color:#B08968; font-size:13px; padding:6px 0; }
+  table.rank { width:100%; border-collapse:collapse; font-size:13px; }
+  table.rank th { text-align:left; color:#9A3412; font-size:11px; padding:6px 4px; border-bottom:2px solid #F3D9BE; }
+  table.rank td { padding:7px 4px; border-bottom:1px dashed #F3D9BE; vertical-align:top; }
+  .up { color:#15803D; } .down { color:#B91C1C; } .same { color:#B08968; }
+  .hist { font-size:13px; }
+  .hist .hrow { display:flex; gap:8px; padding:6px 0; border-bottom:1px dashed #F3D9BE; }
+  .hist .hrow:last-child { border-bottom:0; }
+  .hist .hd { color:#9A3412; flex:none; width:74px; }
+  .hist .hm { flex:1; }
+  .search { display:flex; gap:8px; margin-bottom:10px; }
+  .search input { flex:1; padding:10px; border:1px solid #F3D9BE; border-radius:10px; font-size:14px; background:#fff; }
+  .search select { padding:10px 6px; border:1px solid #F3D9BE; border-radius:10px; font-size:13px; background:#fff; }
+  .post { background:#fff; border:1px solid #F3D9BE; border-radius:12px; padding:10px; margin-bottom:8px; display:flex; gap:10px; }
+  .post img { width:56px; height:56px; object-fit:cover; border-radius:8px; background:#FFF3E4; flex:none; }
+  .post .pm { flex:1; min-width:0; }
+  .post .pmenu { font-weight:700; font-size:14px; }
+  .post .pmeta { font-size:12px; color:#9A3412; margin-top:2px; }
+  .post .detail { display:none; margin-top:8px; font-size:13px; }
+  .post.open .detail { display:block; }
+  .post .cap { white-space:pre-wrap; color:#7C2D12; margin-bottom:8px; }
+  .post .ai { background:#FFF9F2; border-radius:8px; padding:8px; white-space:pre-wrap; }
+  .post .ai .ailabel { font-size:11px; color:#C2410C; font-weight:700; margin-bottom:4px; }
+  .more { width:100%; padding:12px; background:#FFF3E4; border:1px solid #F3D9BE; border-radius:10px; font-size:14px; color:#9A3412; }
+  .loading { text-align:center; color:#B08968; padding:30px 0; font-size:14px; }
+  .hidden { display:none; }
+</style>
+</head>
+<body>
+<header>
+  <div class="title">🥯 Bunのダッシュボード</div>
+  <div class="updated" id="updatedAt"></div>
+  <button id="refreshBtn">更新</button>
+</header>
+<nav class="tabs">
+  <button data-tab="home" class="active">概要</button>
+  <button data-tab="posts">投稿</button>
+  <button data-tab="recipes">レシピ人気</button>
+  <button data-tab="bagel">ベーグル順位</button>
+</nav>
+<main>
+  <section id="tab-home">
+    <div class="card">
+      <h2>パン工房アプリの利用</h2>
+      <div><span class="big" id="totalUse">-</span> <span style="color:#9A3412;font-size:13px;">回（累計）</span></div>
+      <div class="rowflex" style="margin-top:10px;">
+        <div class="mini"><div class="n" id="todayUse">-</div><div class="l">今日</div></div>
+        <div class="mini"><div class="n" id="yesterdayUse">-</div><div class="l">昨日</div></div>
+        <div class="mini"><div class="n" id="weekUse">-</div><div class="l">直近7日</div></div>
+      </div>
+      <div class="chips" id="srcChips"></div>
+      <div class="bars" id="dayBars"></div>
+    </div>
+    <div class="card">
+      <h2>今週の人気レシピ</h2>
+      <ol class="rank" id="weekRecipes"></ol>
+    </div>
+    <div class="card">
+      <h2>ベーグル優先順位 トップ5</h2>
+      <ol class="rank" id="bagelTop"></ol>
+    </div>
+    <div class="card">
+      <h2>投稿の記録</h2>
+      <div class="rowflex">
+        <div class="mini"><div class="n" id="postsTotal">-</div><div class="l">総投稿数</div></div>
+        <div class="mini"><div class="n" id="recipeCount" style="font-size:15px;">レシピ別</div><div class="l">記録は「レシピ人気」タブへ</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-posts" class="hidden">
+    <div class="search">
+      <input id="postSearch" type="search" placeholder="メニュー・カテゴリ・本文・AI分析から検索">
+      <select id="postSort">
+        <option value="new">新しい順</option>
+        <option value="likes">いいね順</option>
+        <option value="comments">コメント順</option>
+      </select>
+    </div>
+    <div id="postCount" style="font-size:12px;color:#9A3412;margin-bottom:8px;"></div>
+    <div id="postList"></div>
+    <button class="more hidden" id="postMore">もっと見る</button>
+    <div class="loading hidden" id="postLoading">読み込み中…</div>
+  </section>
+
+  <section id="tab-recipes" class="hidden">
+    <div class="card">
+      <h2>人気レシピ（累計トップ20）</h2>
+      <ol class="rank" id="allRecipes"></ol>
+    </div>
+    <div class="card">
+      <h2>レシピの利用履歴（新しい順）</h2>
+      <div class="hist" id="recipeHistory"></div>
+    </div>
+  </section>
+
+  <section id="tab-bagel" class="hidden">
+    <div class="card">
+      <h2>ベーグル優先順位表（平均いいね順）</h2>
+      <table class="rank">
+        <thead><tr><th>順位</th><th>メニュー</th><th>投稿</th><th>平均♥</th><th>最新</th></tr></thead>
+        <tbody id="bagelTable"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<script>
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxPf6aGtE_j5qRRLuV6tjJ8aMOjaRQfBri3kOsDJ9dmteRgSuQ_7Kerizpi-X79eUaF/exec';
+let summary = null;
+let posts = null;
+let postShown = 0;
+const PAGE = 50;
+
+function fmtDate(d) {
+  const p = String(d).split('/');
+  return p.length === 3 ? (p[1] + '/' + p[2]) : d;
+}
+function todayStr() {
+  const n = new Date();
+  return n.getFullYear() + '/' + String(n.getMonth() + 1).padStart(2, '0') + '/' + String(n.getDate()).padStart(2, '0');
+}
+function esc(s) {
+  return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function loadSummary(force) {
+  try {
+    const res = await fetch(GAS_URL + '?stats=summary');
+    summary = await res.json();
+    renderHome();
+    document.getElementById('updatedAt').textContent = '取得 ' + new Date().toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit'});
+  } catch (e) {
+    document.getElementById('totalUse').textContent = '取得失敗';
+  }
+}
+
+function renderHome() {
+  if (!summary) return;
+  const u = summary.usage || { total: 0, days: [] };
+  document.getElementById('totalUse').textContent = u.total;
+  const days = u.days || [];
+  const byDate = {};
+  days.forEach(d => byDate[d.date] = d);
+  const t = todayStr();
+  const yDate = new Date(); yDate.setDate(yDate.getDate() - 1);
+  const y = yDate.getFullYear() + '/' + String(yDate.getMonth() + 1).padStart(2, '0') + '/' + String(yDate.getDate()).padStart(2, '0');
+  document.getElementById('todayUse').textContent = byDate[t] ? byDate[t].count : 0;
+  document.getElementById('yesterdayUse').textContent = byDate[y] ? byDate[y].count : 0;
+  document.getElementById('weekUse').textContent = days.slice(-7).reduce((s, d) => s + d.count, 0);
+  // 流入元の累計
+  const sums = { instagram: 0, threads: 0, note: 0, reddit: 0, repeater: 0, unknown: 0 };
+  days.forEach(d => { for (const k in sums) sums[k] += d[k] || 0; });
+  const labels = { instagram: 'instagram', threads: 'threads', note: 'note', reddit: 'reddit', repeater: 'リピーター', unknown: '不明' };
+  document.getElementById('srcChips').innerHTML = Object.keys(sums).map(k =>
+    '<span class="chip">' + labels[k] + ' <b>' + sums[k] + '</b></span>').join('');
+  // 直近14日のバー
+  const last14 = days.slice(-14);
+  const max = Math.max(1, ...last14.map(d => d.count));
+  document.getElementById('dayBars').innerHTML = last14.map(d =>
+    '<div class="bar"><div class="v">' + d.count + '</div><div class="col" style="height:' + Math.round(d.count / max * 52) + 'px"></div><div class="d">' + fmtDate(d.date) + '</div></div>').join('');
+  // 人気レシピ（週）
+  const wk = (summary.recipeViews && summary.recipeViews.week) || [];
+  document.getElementById('weekRecipes').innerHTML = wk.length
+    ? wk.slice(0, 5).map((r, i) => '<li><span class="rk">' + (i + 1) + '</span><span class="rm">' + esc(r.menu) + '</span><span class="rc">' + r.count + '回</span></li>').join('')
+    : '<div class="empty">まだデータが溜まっていません</div>';
+  // ベーグル順位トップ5
+  const bg = summary.bagelRanking || [];
+  document.getElementById('bagelTop').innerHTML = bg.slice(0, 5).map(r =>
+    '<li><span class="rk">' + r.rank + '</span><span class="rm">' + esc(r.menu) + '</span><span class="rc">平均♥ ' + r.avgLikes + '</span></li>').join('');
+  document.getElementById('postsTotal').textContent = summary.postsTotal || 0;
+  // ベーグル順位タブ
+  document.getElementById('bagelTable').innerHTML = bg.map(r => {
+    let arrow = '<span class="same">→</span>';
+    if (r.prevRank && r.prevRank > r.rank) arrow = '<span class="up">↑</span>';
+    if (r.prevRank && r.prevRank < r.rank) arrow = '<span class="down">↓</span>';
+    return '<tr><td>' + r.rank + ' ' + arrow + '</td><td>' + esc(r.menu) + '</td><td>' + r.posts + '</td><td>' + r.avgLikes + '</td><td>' + fmtDate(r.latest) + '</td></tr>';
+  }).join('');
+  // レシピ人気タブ
+  const all = (summary.recipeViews && summary.recipeViews.allTime) || [];
+  document.getElementById('allRecipes').innerHTML = all.length
+    ? all.map((r, i) => '<li><span class="rk">' + (i + 1) + '</span><span class="rm">' + esc(r.menu) + '</span><span class="rc">' + r.count + '回</span></li>').join('')
+    : '<div class="empty">まだデータが溜まっていません</div>';
+  const rec = (summary.recipeViews && summary.recipeViews.recent) || [];
+  document.getElementById('recipeHistory').innerHTML = rec.length
+    ? rec.map(h => '<div class="hrow"><span class="hd">' + fmtDate(h.date) + '</span><span class="hm">' + esc(h.menu) + '</span><span class="rc">' + h.count + '回</span></div>').join('')
+    : '<div class="empty">まだ履歴がありません</div>';
+}
+
+async function loadPosts() {
+  if (posts) { renderPosts(true); return; }
+  document.getElementById('postLoading').classList.remove('hidden');
+  try {
+    const cached = localStorage.getItem('bunDashPostsV1');
+    if (cached) {
+      const obj = JSON.parse(cached);
+      if (Date.now() - obj.at < 10 * 60 * 1000) posts = obj.posts;
+    }
+    if (!posts) {
+      const res = await fetch(GAS_URL + '?stats=posts');
+      const data = await res.json();
+      posts = data.posts || [];
+      try { localStorage.setItem('bunDashPostsV1', JSON.stringify({ at: Date.now(), posts })); } catch (e) {}
+    }
+  } catch (e) { posts = []; }
+  document.getElementById('postLoading').classList.add('hidden');
+  renderPosts(true);
+}
+
+function filteredPosts() {
+  const q = document.getElementById('postSearch').value.trim();
+  const sort = document.getElementById('postSort').value;
+  let list = posts.slice();
+  if (q) {
+    const ql = q.toLowerCase();
+    list = list.filter(p => (p.menu + ' ' + p.cat + ' ' + p.caption + ' ' + p.ai).toLowerCase().includes(ql));
+  }
+  if (sort === 'likes') list.sort((a, b) => b.likes - a.likes);
+  else if (sort === 'comments') list.sort((a, b) => b.comments - a.comments);
+  else list.sort((a, b) => String(b.date).localeCompare(String(a.date)));
+  return list;
+}
+
+function renderPosts(reset) {
+  if (!posts) return;
+  if (reset) postShown = 0;
+  const list = filteredPosts();
+  document.getElementById('postCount').textContent = list.length + ' 件';
+  postShown = Math.min(list.length, postShown + PAGE);
+  const html = list.slice(0, postShown).map((p, i) =>
+    '<div class="post" data-i="' + i + '">' +
+    (p.img ? '<img src="https://lh3.googleusercontent.com/d/' + p.img + '" loading="lazy" onerror="this.style.display=\'none\'">' : '') +
+    '<div class="pm"><div class="pmenu">' + esc(p.menu || '(メニュー不明)') + '</div>' +
+    '<div class="pmeta">' + esc(p.date) + ' ・ ' + esc(p.cat) + ' ・ ♥ ' + p.likes + ' ・ 💬 ' + p.comments + '</div>' +
+    '<div class="detail"><div class="cap">' + esc(p.caption) + '</div>' +
+    (p.ai ? '<div class="ai"><div class="ailabel">AIの分析</div>' + esc(p.ai) + '</div>' : '') +
+    '</div></div></div>').join('');
+  document.getElementById('postList').innerHTML = html || '<div class="empty">該当する投稿がありません</div>';
+  document.getElementById('postMore').classList.toggle('hidden', postShown >= list.length);
+  document.querySelectorAll('.post').forEach(el => {
+    el.addEventListener('click', () => el.classList.toggle('open'));
+  });
+}
+
+document.querySelectorAll('nav.tabs button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('nav.tabs button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    ['home', 'posts', 'recipes', 'bagel'].forEach(t => {
+      document.getElementById('tab-' + t).classList.toggle('hidden', t !== btn.dataset.tab);
+    });
+    if (btn.dataset.tab === 'posts') loadPosts();
+  });
+});
+document.getElementById('postSearch').addEventListener('input', () => renderPosts(true));
+document.getElementById('postSort').addEventListener('change', () => renderPosts(true));
+document.getElementById('postMore').addEventListener('click', () => renderPosts(false));
+document.getElementById('refreshBtn').addEventListener('click', () => {
+  try { localStorage.removeItem('bunDashPostsV1'); } catch (e) {}
+  posts = null;
+  loadSummary(true);
+  if (!document.getElementById('tab-posts').classList.contains('hidden')) loadPosts();
+});
+
+loadSummary(false);
+</script>
+</body>
+</html>
