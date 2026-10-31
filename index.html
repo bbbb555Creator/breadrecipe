@@ -254,6 +254,21 @@
             } catch (e) {}
         }
 
+        // --- レシピ別の閲覧カウント（詳細を開いたときに、そのレシピを1回だけ数える） ---
+        // 同じレシピを行き来しても数え直さないよう、開いている間の記録（sessionStorage）で判定する
+        const VIEWED_KEY = 'breadAppViewed';
+        function sendRecipeViewPing(menuName) {
+            try {
+                if (localStorage.getItem(OWNER_KEY)) return;
+                let viewed = [];
+                try { viewed = JSON.parse(sessionStorage.getItem(VIEWED_KEY) || '[]'); } catch (e) {}
+                if (viewed.indexOf(menuName) >= 0) return;
+                viewed.push(menuName);
+                try { sessionStorage.setItem(VIEWED_KEY, JSON.stringify(viewed)); } catch (e) {}
+                fetch(GAS_URL + '?view=' + encodeURIComponent(menuName), { mode: 'no-cors', keepalive: true }).catch(() => {});
+            } catch (e) {}
+        }
+
         // --- Service Worker（ホーム画面アプリでも新しい版が届くように） ---
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js').catch(() => {});
@@ -382,6 +397,7 @@
             currentRecipeKey = menuName;
             stopTimer();
             detailOpen = true;
+            sendRecipeViewPing(menuName);
             document.getElementById('view-list').classList.add('hidden');
             document.getElementById('view-detail').classList.remove('hidden');
             loadRecipe();
