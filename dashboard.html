@@ -116,6 +116,16 @@
         <option value="comments">コメント順</option>
       </select>
     </div>
+    <style>
+      .kbtn { border:1px solid #F1D3B3; background:#fff; color:#7C2D12; border-radius:999px; padding:6px 12px; font-size:13px; }
+      .kbtn.on { background:#C2410C; color:#fff; border-color:#C2410C; font-weight:700; }
+    </style>
+    <div id="kindFilters" style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
+      <button data-k="all" class="kbtn on">すべて</button>
+      <button data-k="フィード" class="kbtn">📷 フィード</button>
+      <button data-k="リール" class="kbtn">🎬 リール</button>
+      <button data-k="none" class="kbtn">過去分</button>
+    </div>
     <div id="postCount" style="font-size:12px;color:#9A3412;margin-bottom:8px;"></div>
     <div id="postList"></div>
     <button class="more hidden" id="postMore">もっと見る</button>
@@ -246,10 +256,14 @@ async function loadPosts() {
   renderPosts(true);
 }
 
+let kindFilter = 'all';
 function filteredPosts() {
   const q = document.getElementById('postSearch').value.trim();
   const sort = document.getElementById('postSort').value;
   let list = posts.slice();
+  if (kindFilter === 'フィード') list = list.filter(p => p.kind === 'フィード');
+  else if (kindFilter === 'リール') list = list.filter(p => p.kind === 'リール');
+  else if (kindFilter === 'none') list = list.filter(p => !p.kind);
   if (q) {
     const ql = q.toLowerCase();
     list = list.filter(p => (p.menu + ' ' + p.cat + ' ' + p.caption + ' ' + p.ai).toLowerCase().includes(ql));
@@ -292,6 +306,11 @@ document.querySelectorAll('nav.tabs button').forEach(btn => {
     if (btn.dataset.tab === 'posts') loadPosts();
   });
 });
+document.querySelectorAll('#kindFilters .kbtn').forEach(b => b.addEventListener('click', () => {
+  kindFilter = b.dataset.k;
+  document.querySelectorAll('#kindFilters .kbtn').forEach(x => x.classList.toggle('on', x === b));
+  renderPosts(true);
+}));
 document.getElementById('postSearch').addEventListener('input', () => renderPosts(true));
 document.getElementById('postSort').addEventListener('change', () => renderPosts(true));
 document.getElementById('postMore').addEventListener('click', () => renderPosts(false));
